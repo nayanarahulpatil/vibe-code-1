@@ -1,10 +1,12 @@
 # User Story Generator
 
-Act as a Product Owner.
+Act as a Senior Product Owner and Business Analyst.
 
-Feature:
+Using the Epic Breakdown below, create user stories for each Epic.
 
-{{FEATURE}}
+Epic Breakdown:
+
+{{EPICS_CONTENT}}
 
 Generate:
 
@@ -24,3 +26,5 @@ Output Format:
 ## Priority
 
 ## Dependencies
+
+Generate content suitable for docs/user-stories.md.
