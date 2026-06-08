@@ -1,722 +1,553 @@
-# 🗂️ Project Boundary Document
-## Enterprise Employee Travel & Expense Management System (ETEMS)
-**Version**: 2.6.26  
-**Document Type**: Project Boundary & Directory Structure  
-**Source Documents**: PRD_ETEMS.md · kpi.md · project_scope.md  
-**Date**: 2026-06-03
+# Project Boundary Document
+## Enterprise Employee Travel & Expense Management System
+
+**Document Version:** 1.0  
+**Prepared By:** Senior Product Manager & Enterprise System Architect  
+**Date:** 2026-06-05  
+**Reference Documents:** `kpi.md` · `prd.md` · `project_scope.md`  
+**Technology Stack:** React.js · Node.js (NestJS) · PostgreSQL · Redis · REST APIs  
+**Deployment Target:** AWS / Azure (Cloud-Hosted, Containerized)
+
+---
+
+## Table of Contents
+1. [Project Summary](#1-project-summary)
+2. [System Boundary Overview](#2-system-boundary-overview)
+3. [Actor Boundary Map](#3-actor-boundary-map)
+4. [Integration Boundary](#4-integration-boundary)
+5. [Project Directory & Folder Structure](#5-project-directory--folder-structure)
+6. [Module Boundary Definitions](#6-module-boundary-definitions)
+7. [Data Boundary](#7-data-boundary)
+8. [Infrastructure Boundary](#8-infrastructure-boundary)
+9. [Boundary Constraints Summary](#9-boundary-constraints-summary)
 
 ---
 
 ## 1. Project Summary
 
-### 1.1 What We Are Building
-The **Enterprise Employee Travel & Expense Management System (ETEMS)** is a full-stack, cloud-ready enterprise platform that digitizes and automates the complete travel and expense lifecycle for a **10,000+ employee organization** operating across multiple locations.
+### What Is This System?
+The **Enterprise Employee Travel & Expense Management System** is a fully digital, centralized web-based platform designed to replace all manual travel and expense processes (email approvals, Excel tracking, paper receipts) with an automated, policy-compliant, and auditable digital workflow.
 
-The system eliminates manual workflows — emails, Excel sheets, paper-based approvals, and phone-based coordination — and replaces them with a unified, policy-enforced, auditable digital platform.
+### Who Uses It?
+The system serves **10,000+ employees** across multiple business locations, including the following user roles:
 
-### 1.2 Core Problem Solved
-| Before (Manual) | After (ETEMS) |
-|-----------------|----------------|
-| Travel requests via email | Self-service digital submission with auto-entitlements |
-| Excel-based expense tracking | Itemized claims with OCR receipt parsing |
-| Approval via email chains | Configurable multi-level workflow engine with SLA enforcement |
-| Manual reimbursement tracking | Real-time status tracking + ERP/payroll export |
-| No policy enforcement | Inline violation detection, exception routing, grade-based entitlements |
-| Finance reporting from spreadsheets | Live dashboards, scheduled reports, budget vs actuals |
+| Role | Primary Responsibility in System |
+|------|----------------------------------|
+| **Employee** | Submit travel requests, upload receipts, track reimbursements |
+| **Manager** | Review and approve/reject team travel requests |
+| **Finance Executive** | Verify expense claims, initiate reimbursements |
+| **HR Administrator** | Manage employee master data and org hierarchy |
+| **Compliance Officer** | Configure and audit policy rules |
+| **Auditor** | Read-only access to full audit trail and reports |
+| **System Administrator** | User management, role assignment, system configuration |
 
-### 1.3 System Boundaries
+### Why This System?
+| Problem (Current State) | Solution (Target State) |
+|------------------------|------------------------|
+| Email-based travel requests | Self-service digital portal with instant routing |
+| 3-day average approval time | < 8-hour automated approval workflow |
+| 15-day reimbursement cycle | < 3-day system-triggered bank payment |
+| 70% policy compliance | > 98% enforced at point of submission |
+| No centralized spend visibility | Real-time KPI dashboards across all spend |
+| 500 helpdesk tickets/month | < 100/month via self-service + notifications |
+| Paper receipts, manual audits | Digital receipts, immutable audit logs |
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        ETEMS Platform                           │
-│                                                                 │
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────────────┐  │
-│  │  Web App    │   │ Mobile App  │   │    Admin Portal     │  │
-│  │ (React/TS)  │   │(React Native│   │   (HR / Finance)    │  │
-│  └──────┬──────┘   └──────┬──────┘   └──────────┬──────────┘  │
-│         └─────────────────┴──────────────────────┘             │
-│                            │  REST API (OpenAPI v1/v2)          │
-│                    ┌───────▼────────┐                           │
-│                    │  Spring Boot   │                           │
-│                    │  API Gateway   │                           │
-│                    └───────┬────────┘                           │
-│         ┌──────────────────┼──────────────────┐                │
-│         ▼                  ▼                  ▼                 │
-│  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐        │
-│  │  PostgreSQL │  │    Redis     │  │  AWS S3 / Blob  │        │
-│  │  (Primary)  │  │  (Cache/SLA) │  │  (Files/OCR)    │        │
-│  └─────────────┘  └──────────────┘  └─────────────────┘        │
-└─────────────────────────────────────────────────────────────────┘
-         │                  │                   │
-   ┌─────▼──────┐   ┌───────▼───────┐   ┌──────▼───────┐
-   │   HRMS     │   │  ERP/Payroll  │   │  GDS / Forex │
-   │  (Sync)    │   │  SAP/Oracle   │   │  Twilio/FCM  │
-   └────────────┘   └───────────────┘   └──────────────┘
-```
-
-### 1.4 Actors & Roles
-| Role | Primary Responsibilities |
-|------|------------------------|
-| **Employee** | Submit travel requests, expense claims, view status |
-| **Line Manager** | First-level approval of travel requests and claims |
-| **Department Head** | Second-level approval, budget visibility |
-| **Finance Analyst** | Final finance review, reimbursement processing, ERP export |
-| **HR Admin** | Policy configuration, workflow setup, user management |
-| **Travel Desk** | Booking management, vendor coordination, GDS interaction |
-| **Auditor** | Read-only audit trail access, compliance reporting |
-| **Super Admin** | System-level configuration, role management |
-
-### 1.5 Key Metrics & Scale
-| Parameter | Target |
-|-----------|--------|
-| Users | 10,000+ employees |
-| Concurrent Sessions | 10,000+ |
-| API Response Time (P95) | < 500 ms |
-| System Uptime | 99.9% SLA |
-| Unit Test Coverage | ≥ 80% |
-| Mobile Platforms | iOS 14+, Android 10+ |
-| Web Accessibility | WCAG 2.1 AA |
+### Key Business Outcomes
+- **95%+** system adoption across all employees
+- **80% reduction** in approval cycle time
+- **80% reduction** in reimbursement turnaround time
+- **98%+** policy compliance enforcement
+- **25–35%** operational cost reduction
+- **Positive ROI** within 12–18 months post-launch
 
 ---
 
-## 2. Technology Stack
+## 2. System Boundary Overview
 
-| Layer | Technology |
-|-------|-----------|
-| **Frontend Web** | React.js 18+, TypeScript, Tailwind CSS, Recharts/Chart.js, Lucide Icons, React Query |
-| **Mobile** | React Native (iOS 14+, Android 10+) |
-| **Backend** | Java 17+, Spring Boot 3.x, Spring Security, Spring State Machine / Camunda BPM |
-| **Database** | PostgreSQL 15+ (primary), Redis 7+ (cache, sessions, rate limiting) |
-| **ORM & Migrations** | Hibernate JPA, Flyway |
-| **Authentication** | SAML 2.0 / OAuth 2.0 SSO, JWT (RS256), BCrypt |
-| **File Storage** | AWS S3 / Azure Blob Storage (AES-256 at rest, signed URLs) |
-| **OCR** | AWS Textract (primary), Tesseract (fallback) |
-| **Notifications** | SendGrid (email), Twilio (SMS/WhatsApp), Firebase FCM (push) |
-| **Search/Logging** | Elasticsearch, Logstash, Kibana (ELK Stack) |
-| **Monitoring** | Prometheus, Grafana |
-| **Containerization** | Docker, Docker Compose, Kubernetes (Helm Charts) |
-| **CI/CD** | GitHub Actions / Jenkins |
-| **Secrets** | HashiCorp Vault / AWS Secrets Manager |
-| **Testing** | JUnit 5, Mockito, React Testing Library, Cypress, JMeter |
-| **API Docs** | OpenAPI 3.0 / Swagger UI |
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                  SYSTEM BOUNDARY                                     │
+│                                                                      │
+│   ┌────────────────────────────────────────────────────────────┐    │
+│   │                   React.js Web Portal                      │    │
+│   │   Employee Portal · Manager Dashboard · Finance Dashboard  │    │
+│   │   Admin Panel · Audit View · KPI Dashboard                 │    │
+│   └────────────────────────┬───────────────────────────────────┘    │
+│                            │ REST API (HTTPS)                       │
+│   ┌────────────────────────▼───────────────────────────────────┐    │
+│   │              Node.js Backend (NestJS)                      │    │
+│   │  Auth · Users · Travel · Approvals · Expenses · Policy     │    │
+│   │  Reimbursement · Notifications · Reports · Audit Logs      │    │
+│   └──────┬──────────────────┬──────────────────┬──────────────┘    │
+│          │                  │                  │                    │
+│   ┌──────▼──────┐   ┌───────▼──────┐   ┌──────▼──────┐           │
+│   │ PostgreSQL  │   │    Redis     │   │  File Store  │           │
+│   │  (Primary   │   │   (Cache +   │   │ (Receipts &  │           │
+│   │   Database) │   │   Sessions)  │   │  Documents)  │           │
+│   └─────────────┘   └──────────────┘   └─────────────┘           │
+│                                                                      │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ External Integrations
+         ┌─────────────────────┼──────────────────────┐
+         │                     │                      │
+   ┌─────▼──────┐      ┌───────▼──────┐      ┌───────▼──────┐
+   │    HRMS    │      │  SSO / IdP   │      │   Banking    │
+   │ (Employee  │      │  (Corporate  │      │    API       │
+   │  Master)   │      │   Identity)  │      │ (Payments)   │
+   └────────────┘      └──────────────┘      └─────────────┘
+```
 
 ---
 
-## 3. Full Directory / Folder Structure
+## 3. Actor Boundary Map
+
+### Internal Actors (Within System Boundary)
+
+| Actor | Access Level | Boundary |
+|-------|-------------|---------|
+| Employee | Own requests, expenses, receipts, status | Read/Write own records only |
+| Manager | Team travel requests, approval actions | Read team; Write approvals only |
+| Finance Executive | All expense claims, reimbursement queue | Read all; Write reimbursement decisions |
+| Compliance Officer | Policy rules configuration | Read all; Write policy configs |
+| HR Administrator | Employee profiles, org hierarchy | Write user/role data only |
+| Auditor | Full audit trail, reports | Read-only, no write access |
+| System Administrator | Full system configuration | Write system settings, roles |
+
+### External Actors (Outside System Boundary)
+
+| External Actor | Interaction Type | Data Exchanged |
+|---------------|-----------------|----------------|
+| HRMS System | Inbound Sync | Employee master data (read-only pull) |
+| SSO / Identity Provider | Authentication | Auth token / session |
+| Banking System | Outbound API | Payment initiation, payment status |
+| Email Service (SMTP/SES) | Outbound | Notification emails |
+| SMS Gateway *(Phase 2)* | Outbound | SMS alerts |
+| ERP System *(Phase 2)* | Bidirectional | Budget data, cost center mapping |
+| Travel Booking Vendors *(Phase 2)* | Inbound | Flight, hotel, cab bookings |
+
+---
+
+## 4. Integration Boundary
+
+### Phase 1 Integrations (In Scope — MVP)
 
 ```
-etems/                                          ← Project root
+System ◄──── HRMS ──────► Employee Master Data (read-only sync)
+System ◄──── SSO  ──────► Authentication & Authorization
+System ────► Banking ────► Reimbursement Payment Initiation
+System ────► Email  ────► Workflow Notifications & Alerts
+```
+
+| Integration | Direction | Protocol | MVP | Phase 2 |
+|------------|----------|---------|-----|---------|
+| HRMS | Inbound (pull) | REST API | ✅ | — |
+| SSO / Identity Provider | Bidirectional | SAML / OAuth2 | ✅ | — |
+| Banking API | Outbound | REST API | ✅ | — |
+| Email Service | Outbound | SMTP / SES | ✅ | — |
+| SMS Gateway | Outbound | REST API | ❌ | ✅ |
+| ERP System | Bidirectional | REST API | ❌ | ✅ |
+| Travel Booking Vendors | Inbound | REST API | ❌ | ✅ |
+| OCR Engine | Inbound | REST API | ❌ | ✅ |
+
+---
+
+## 5. Project Directory & Folder Structure
+
+The following is the **recommended folder structure** for the full project codebase, reflecting the technology stack and module architecture defined in the PRD.
+
+```
+enterprise-tems/                          ← Root Project Directory
 │
-├── 📁 backend/                                 ← Java Spring Boot application
-│   ├── 📄 pom.xml                              ← Maven build file
-│   ├── 📄 Dockerfile                           ← Backend container image
-│   ├── 📄 .env.example                         ← Environment variable template
-│   │
-│   └── 📁 src/
-│       ├── 📁 main/
-│       │   ├── 📁 java/com/etems/
-│       │   │   │
-│       │   │   ├── 📁 config/                  ← Application configuration
-│       │   │   │   ├── SecurityConfig.java      ← JWT, CORS, RBAC security config
-│       │   │   │   ├── SsoConfig.java           ← SAML 2.0 / OAuth2 config
-│       │   │   │   ├── RedisConfig.java         ← Redis cache & session config
-│       │   │   │   ├── SwaggerConfig.java       ← OpenAPI / Swagger config
-│       │   │   │   ├── FlywayConfig.java        ← DB migration config
-│       │   │   │   └── AppProperties.java       ← Typed env properties
-│       │   │   │
-│       │   │   ├── 📁 auth/                    ← Authentication & session (KPI 1)
-│       │   │   │   ├── controller/
-│       │   │   │   │   └── AuthController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── AuthService.java
-│       │   │   │   │   ├── JwtService.java
-│       │   │   │   │   └── SsoService.java
-│       │   │   │   ├── model/
-│       │   │   │   │   ├── User.java
-│       │   │   │   │   ├── Role.java
-│       │   │   │   │   └── Session.java
-│       │   │   │   ├── repository/
-│       │   │   │   │   └── UserRepository.java
-│       │   │   │   └── dto/
-│       │   │   │       ├── LoginRequest.java
-│       │   │   │       └── AuthResponse.java
-│       │   │   │
-│       │   │   ├── 📁 user/                    ← User & profile management (KPI 1)
-│       │   │   │   ├── controller/
-│       │   │   │   │   └── UserController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── UserService.java
-│       │   │   │   │   ├── DelegationService.java
-│       │   │   │   │   └── HrmsSyncService.java
-│       │   │   │   ├── model/
-│       │   │   │   │   ├── UserProfile.java
-│       │   │   │   │   └── Delegation.java
-│       │   │   │   ├── repository/
-│       │   │   │   │   ├── UserProfileRepository.java
-│       │   │   │   │   └── DelegationRepository.java
-│       │   │   │   └── dto/
-│       │   │   │       └── UserProfileDto.java
-│       │   │   │
-│       │   │   ├── 📁 travel/                  ← Travel request module (KPI 2)
-│       │   │   │   ├── controller/
-│       │   │   │   │   └── TravelRequestController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── TravelRequestService.java
-│       │   │   │   │   ├── ItineraryService.java
-│       │   │   │   │   ├── AdvanceRequestService.java
-│       │   │   │   │   └── BlackoutPeriodService.java
-│       │   │   │   ├── model/
-│       │   │   │   │   ├── TravelRequest.java
-│       │   │   │   │   ├── TravelItinerary.java
-│       │   │   │   │   ├── AdvanceRequest.java
-│       │   │   │   │   └── TravelStatus.java   ← Enum: state machine states
-│       │   │   │   ├── repository/
-│       │   │   │   │   ├── TravelRequestRepository.java
-│       │   │   │   │   └── AdvanceRequestRepository.java
-│       │   │   │   └── dto/
-│       │   │   │       ├── TravelRequestDto.java
-│       │   │   │       └── AdvanceRequestDto.java
-│       │   │   │
-│       │   │   ├── 📁 approval/                ← Approval workflow engine (KPI 3)
-│       │   │   │   ├── controller/
-│       │   │   │   │   └── ApprovalController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── ApprovalWorkflowService.java
-│       │   │   │   │   ├── EscalationService.java
-│       │   │   │   │   ├── BulkApprovalService.java
-│       │   │   │   │   └── AuditTrailService.java
-│       │   │   │   ├── engine/
-│       │   │   │   │   ├── WorkflowEngine.java  ← Spring State Machine / Camunda
-│       │   │   │   │   ├── ApprovalChainResolver.java
-│       │   │   │   │   └── SlaScheduler.java
-│       │   │   │   ├── model/
-│       │   │   │   │   ├── ApprovalChain.java
-│       │   │   │   │   ├── ApprovalAction.java
-│       │   │   │   │   └── AuditLog.java
-│       │   │   │   ├── repository/
-│       │   │   │   │   ├── ApprovalChainRepository.java
-│       │   │   │   │   └── AuditLogRepository.java
-│       │   │   │   └── dto/
-│       │   │   │       └── ApprovalActionDto.java
-│       │   │   │
-│       │   │   ├── 📁 expense/                 ← Expense claim management (KPI 4)
-│       │   │   │   ├── controller/
-│       │   │   │   │   └── ExpenseClaimController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── ExpenseClaimService.java
-│       │   │   │   │   ├── OcrService.java       ← AWS Textract integration
-│       │   │   │   │   ├── CurrencyConversionService.java
-│       │   │   │   │   ├── PerDiemService.java
-│       │   │   │   │   └── DuplicateDetectionService.java
-│       │   │   │   ├── model/
-│       │   │   │   │   ├── ExpenseClaim.java
-│       │   │   │   │   ├── ExpenseLineItem.java
-│       │   │   │   │   └── ExpenseCategory.java  ← Enum
-│       │   │   │   ├── repository/
-│       │   │   │   │   ├── ExpenseClaimRepository.java
-│       │   │   │   │   └── ExpenseLineItemRepository.java
-│       │   │   │   └── dto/
-│       │   │   │       ├── ExpenseClaimDto.java
-│       │   │   │       └── ExpenseLineItemDto.java
-│       │   │   │
-│       │   │   ├── 📁 policy/                  ← Policy & compliance engine (KPI 5)
-│       │   │   │   ├── controller/
-│       │   │   │   │   └── PolicyController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── PolicyService.java
-│       │   │   │   │   ├── ViolationDetectionService.java
-│       │   │   │   │   ├── EntitlementService.java
-│       │   │   │   │   └── PolicyVersionService.java
-│       │   │   │   ├── model/
-│       │   │   │   │   ├── TravelPolicy.java
-│       │   │   │   │   ├── PolicyVersion.java
-│       │   │   │   │   ├── BlackoutPeriod.java
-│       │   │   │   │   └── VendorList.java
-│       │   │   │   ├── repository/
-│       │   │   │   │   └── PolicyRepository.java
-│       │   │   │   └── dto/
-│       │   │   │       └── PolicyConfigDto.java
-│       │   │   │
-│       │   │   ├── 📁 finance/                 ← Finance & reimbursement (KPI 6)
-│       │   │   │   ├── controller/
-│       │   │   │   │   └── FinanceController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── ReimbursementService.java
-│       │   │   │   │   ├── AdvanceSettlementService.java
-│       │   │   │   │   ├── ErpExportService.java
-│       │   │   │   │   ├── TaxHandlingService.java
-│       │   │   │   │   └── HoldWorkflowService.java
-│       │   │   │   ├── model/
-│       │   │   │   │   ├── Reimbursement.java
-│       │   │   │   │   └── ErpExportRecord.java
-│       │   │   │   ├── repository/
-│       │   │   │   │   └── ReimbursementRepository.java
-│       │   │   │   └── dto/
-│       │   │   │       └── ReimbursementDto.java
-│       │   │   │
-│       │   │   ├── 📁 booking/                 ← Booking & vendor management (KPI 7)
-│       │   │   │   ├── controller/
-│       │   │   │   │   └── BookingController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── TravelDeskService.java
-│       │   │   │   │   ├── GdsIntegrationService.java   ← Amadeus/Sabre read-only
-│       │   │   │   │   ├── CorporateCardService.java
-│       │   │   │   │   └── VisaTrackingService.java
-│       │   │   │   ├── model/
-│       │   │   │   │   ├── Booking.java
-│       │   │   │   │   └── VisaApplication.java
-│       │   │   │   ├── repository/
-│       │   │   │   │   └── BookingRepository.java
-│       │   │   │   └── dto/
-│       │   │   │       └── BookingDto.java
-│       │   │   │
-│       │   │   ├── 📁 notification/            ← Notification service (KPI 8)
-│       │   │   │   ├── controller/
-│       │   │   │   │   └── NotificationController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── NotificationService.java
-│       │   │   │   │   ├── EmailService.java        ← SendGrid
-│       │   │   │   │   ├── SmsService.java          ← Twilio
-│       │   │   │   │   ├── PushNotificationService.java  ← Firebase FCM
-│       │   │   │   │   └── TemplateService.java
-│       │   │   │   ├── model/
-│       │   │   │   │   ├── NotificationTemplate.java
-│       │   │   │   │   └── NotificationLog.java
-│       │   │   │   ├── repository/
-│       │   │   │   │   └── NotificationTemplateRepository.java
-│       │   │   │   └── scheduler/
-│       │   │   │       └── ReminderScheduler.java   ← Post-travel + SLA reminders
-│       │   │   │
-│       │   │   ├── 📁 reporting/               ← Reporting & analytics (KPI 9)
-│       │   │   │   ├── controller/
-│       │   │   │   │   └── ReportingController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── DashboardService.java
-│       │   │   │   │   ├── SpendReportService.java
-│       │   │   │   │   ├── PolicyViolationReportService.java
-│       │   │   │   │   ├── AuditReportService.java
-│       │   │   │   │   └── ReportExportService.java  ← Excel, PDF, CSV
-│       │   │   │   └── dto/
-│       │   │   │       ├── DashboardDto.java
-│       │   │   │       └── SpendReportDto.java
-│       │   │   │
-│       │   │   ├── 📁 budget/                  ← Budget management (KPI 10)
-│       │   │   │   ├── controller/
-│       │   │   │   │   └── BudgetController.java
-│       │   │   │   ├── service/
-│       │   │   │   │   ├── BudgetService.java
-│       │   │   │   │   ├── BudgetAlertService.java
-│       │   │   │   │   └── BudgetRevisionService.java
-│       │   │   │   ├── model/
-│       │   │   │   │   ├── Budget.java
-│       │   │   │   │   └── BudgetRevision.java
-│       │   │   │   ├── repository/
-│       │   │   │   │   └── BudgetRepository.java
-│       │   │   │   └── dto/
-│       │   │   │       └── BudgetDto.java
-│       │   │   │
-│       │   │   ├── 📁 integration/             ← External system integrations (KPI 14)
-│       │   │   │   ├── hrms/
-│       │   │   │   │   ├── HrmsApiClient.java
-│       │   │   │   │   └── HrmsSyncJob.java      ← Scheduled daily sync
-│       │   │   │   ├── erp/
-│       │   │   │   │   └── ErpApiClient.java
-│       │   │   │   ├── gds/
-│       │   │   │   │   └── GdsApiClient.java     ← Amadeus/Sabre read
-│       │   │   │   ├── forex/
-│       │   │   │   │   └── ForexApiClient.java   ← Daily exchange rates
-│       │   │   │   └── webhook/
-│       │   │   │       └── WebhookDispatcher.java
-│       │   │   │
-│       │   │   ├── 📁 storage/                 ← File handling (S3/Blob)
-│       │   │   │   ├── StorageService.java
-│       │   │   │   └── VirusScanService.java
-│       │   │   │
-│       │   │   ├── 📁 exception/               ← Global error handling
-│       │   │   │   ├── GlobalExceptionHandler.java
-│       │   │   │   ├── ErrorResponse.java
-│       │   │   │   └── EtemsException.java
-│       │   │   │
-│       │   │   └── 📄 EtemsApplication.java    ← Spring Boot entry point
-│       │   │
-│       │   └── 📁 resources/
-│       │       ├── 📄 application.yml           ← Main config (env vars)
-│       │       ├── 📄 application-dev.yml
-│       │       ├── 📄 application-prod.yml
-│       │       └── 📁 db/migration/             ← Flyway SQL migrations
-│       │           ├── V1__init_schema.sql
-│       │           ├── V2__user_roles.sql
-│       │           ├── V3__travel_request.sql
-│       │           ├── V4__expense_claim.sql
-│       │           ├── V5__approval_workflow.sql
-│       │           ├── V6__policy_engine.sql
-│       │           ├── V7__budget.sql
-│       │           └── V8__notifications.sql
-│       │
-│       └── 📁 test/
-│           └── 📁 java/com/etems/
-│               ├── 📁 auth/
-│               │   └── AuthServiceTest.java
-│               ├── 📁 travel/
-│               │   └── TravelRequestServiceTest.java
-│               ├── 📁 approval/
-│               │   └── ApprovalWorkflowServiceTest.java
-│               ├── 📁 expense/
-│               │   └── ExpenseClaimServiceTest.java
-│               ├── 📁 policy/
-│               │   └── PolicyServiceTest.java
-│               ├── 📁 finance/
-│               │   └── ReimbursementServiceTest.java
-│               ├── 📁 integration/
-│               │   └── TravelRequestIntegrationTest.java
-│               └── 📁 performance/
-│                   └── LoadTest.jmx              ← JMeter test plan
+├── Agent/                                ← Project Documentation
+│   ├── kpi.md                            ← KPI Definition Document
+│   ├── prd.md                            ← Product Requirements Document
+│   ├── project_scope.md                  ← Project Scope Document
+│   └── project_boundary.md              ← This Document
 │
-├── 📁 frontend/                                  ← React + TypeScript web app
-│   ├── 📄 package.json
-│   ├── 📄 tsconfig.json
-│   ├── 📄 tailwind.config.ts
-│   ├── 📄 vite.config.ts
-│   ├── 📄 Dockerfile                             ← Frontend container image
-│   ├── 📄 .env.example
-│   │
-│   ├── 📁 public/
-│   │   ├── favicon.ico
-│   │   └── manifest.json
-│   │
-│   └── 📁 src/
-│       ├── 📄 main.tsx                           ← React entry point
-│       ├── 📄 App.tsx                            ← Root component + routing
-│       │
-│       ├── 📁 assets/                            ← Images, fonts, icons
-│       │
-│       ├── 📁 styles/
-│       │   └── index.css                         ← Tailwind base + custom vars
-│       │
-│       ├── 📁 config/
-│       │   ├── api.ts                            ← Axios base config
-│       │   └── routes.ts                         ← Route constants
-│       │
-│       ├── 📁 types/                             ← Shared TypeScript types
-│       │   ├── auth.types.ts
-│       │   ├── travel.types.ts
-│       │   ├── expense.types.ts
-│       │   ├── approval.types.ts
-│       │   ├── finance.types.ts
-│       │   └── reporting.types.ts
-│       │
-│       ├── 📁 hooks/                             ← Custom React hooks
-│       │   ├── useAuth.ts
-│       │   ├── useTravelRequest.ts
-│       │   ├── useExpenseClaim.ts
-│       │   ├── useApproval.ts
-│       │   └── useNotifications.ts
-│       │
-│       ├── 📁 context/                           ← React Context providers
-│       │   ├── AuthContext.tsx
-│       │   └── ThemeContext.tsx
-│       │
-│       ├── 📁 services/                          ← API call functions (React Query)
-│       │   ├── auth.service.ts
-│       │   ├── travel.service.ts
-│       │   ├── expense.service.ts
-│       │   ├── approval.service.ts
-│       │   ├── finance.service.ts
-│       │   ├── notification.service.ts
-│       │   ├── reporting.service.ts
-│       │   └── budget.service.ts
-│       │
-│       ├── 📁 components/                        ← Shared/reusable components
-│       │   ├── 📁 ui/
-│       │   │   ├── Button.tsx
-│       │   │   ├── Input.tsx
-│       │   │   ├── Modal.tsx
-│       │   │   ├── Table.tsx
-│       │   │   ├── Badge.tsx
-│       │   │   ├── StatusTimeline.tsx
-│       │   │   ├── FileUpload.tsx
-│       │   │   ├── NotificationBell.tsx
-│       │   │   └── ThemeToggle.tsx
-│       │   ├── 📁 charts/
-│       │   │   ├── SpendGauge.tsx
-│       │   │   ├── TrendSparkline.tsx
-│       │   │   ├── DepartmentBarChart.tsx
-│       │   │   └── BudgetUtilization.tsx
-│       │   └── 📁 layout/
-│       │       ├── AppShell.tsx
-│       │       ├── Sidebar.tsx
-│       │       ├── TopNav.tsx
-│       │       └── MobileTabBar.tsx
-│       │
-│       └── 📁 pages/                             ← Role-aware page views
-│           ├── 📁 auth/
-│           │   ├── LoginPage.tsx
-│           │   └── PasswordResetPage.tsx
-│           ├── 📁 dashboard/
-│           │   ├── EmployeeDashboard.tsx
-│           │   ├── ManagerDashboard.tsx
-│           │   ├── FinanceDashboard.tsx
-│           │   └── ExecutiveDashboard.tsx
-│           ├── 📁 travel/
-│           │   ├── TravelRequestForm.tsx
-│           │   ├── TravelRequestList.tsx
-│           │   └── TravelRequestDetail.tsx
-│           ├── 📁 expense/
-│           │   ├── ExpenseClaimForm.tsx
-│           │   ├── ExpenseClaimList.tsx
-│           │   └── ExpenseClaimDetail.tsx
-│           ├── 📁 approval/
-│           │   ├── ApprovalQueue.tsx
-│           │   ├── BulkApprovalPage.tsx
-│           │   └── AuditTrailPage.tsx
-│           ├── 📁 finance/
-│           │   ├── FinanceReviewQueue.tsx
-│           │   └── ReimbursementTracker.tsx
-│           ├── 📁 booking/
-│           │   └── TravelDeskPortal.tsx
-│           ├── 📁 reporting/
-│           │   ├── SpendReportPage.tsx
-│           │   ├── PolicyViolationReport.tsx
-│           │   └── BudgetVsActuals.tsx
-│           ├── 📁 budget/
-│           │   └── BudgetManagementPage.tsx
-│           └── 📁 admin/
-│               ├── PolicyConfigPage.tsx
-│               ├── WorkflowConfigPage.tsx
-│               ├── NotificationTemplatePage.tsx
-│               └── UserManagementPage.tsx
+├── frontend/                             ← React.js Frontend Application
+│   ├── public/
+│   │   ├── index.html
+│   │   └── favicon.ico
+│   ├── src/
+│   │   ├── assets/                       ← Images, icons, fonts
+│   │   ├── components/                   ← Shared/reusable UI components
+│   │   │   ├── common/
+│   │   │   │   ├── Button/
+│   │   │   │   ├── Modal/
+│   │   │   │   ├── Table/
+│   │   │   │   ├── Form/
+│   │   │   │   └── Loader/
+│   │   │   ├── layout/
+│   │   │   │   ├── Sidebar/
+│   │   │   │   ├── Header/
+│   │   │   │   ├── Footer/
+│   │   │   │   └── NotificationBell/
+│   │   │   └── charts/
+│   │   │       ├── KPIWidget/
+│   │   │       ├── SpendChart/
+│   │   │       └── ComplianceGauge/
+│   │   ├── modules/                      ← Feature Modules (1 per domain)
+│   │   │   ├── auth/
+│   │   │   │   ├── LoginPage.tsx
+│   │   │   │   ├── SSOCallback.tsx
+│   │   │   │   └── authSlice.ts
+│   │   │   ├── travel-request/
+│   │   │   │   ├── TravelRequestForm.tsx
+│   │   │   │   ├── TravelRequestList.tsx
+│   │   │   │   ├── TravelRequestDetail.tsx
+│   │   │   │   └── travelSlice.ts
+│   │   │   ├── approvals/
+│   │   │   │   ├── ApprovalQueue.tsx
+│   │   │   │   ├── ApprovalDetail.tsx
+│   │   │   │   └── approvalsSlice.ts
+│   │   │   ├── expense-claims/
+│   │   │   │   ├── ExpenseClaimForm.tsx
+│   │   │   │   ├── ExpenseClaimList.tsx
+│   │   │   │   ├── ReceiptUpload.tsx
+│   │   │   │   └── expenseSlice.ts
+│   │   │   ├── reimbursement/
+│   │   │   │   ├── ReimbursementQueue.tsx
+│   │   │   │   ├── PaymentStatus.tsx
+│   │   │   │   └── reimbursementSlice.ts
+│   │   │   ├── dashboard/
+│   │   │   │   ├── EmployeeDashboard.tsx
+│   │   │   │   ├── ManagerDashboard.tsx
+│   │   │   │   ├── FinanceDashboard.tsx
+│   │   │   │   └── KPIDashboard.tsx
+│   │   │   ├── reports/
+│   │   │   │   ├── ReportList.tsx
+│   │   │   │   ├── ReportViewer.tsx
+│   │   │   │   └── reportsSlice.ts
+│   │   │   ├── audit/
+│   │   │   │   ├── AuditLogViewer.tsx
+│   │   │   │   └── auditSlice.ts
+│   │   │   ├── notifications/
+│   │   │   │   ├── NotificationCenter.tsx
+│   │   │   │   └── notificationSlice.ts
+│   │   │   ├── policy/
+│   │   │   │   ├── PolicyRuleList.tsx
+│   │   │   │   ├── PolicyRuleForm.tsx
+│   │   │   │   └── policySlice.ts
+│   │   │   └── admin/
+│   │   │       ├── UserManagement.tsx
+│   │   │       ├── RoleManagement.tsx
+│   │   │       └── OrgHierarchy.tsx
+│   │   ├── store/                        ← Redux Toolkit Store
+│   │   │   ├── index.ts
+│   │   │   └── rootReducer.ts
+│   │   ├── services/                     ← API call layer (React Query)
+│   │   │   ├── authService.ts
+│   │   │   ├── travelService.ts
+│   │   │   ├── expenseService.ts
+│   │   │   ├── approvalService.ts
+│   │   │   ├── reimbursementService.ts
+│   │   │   ├── reportService.ts
+│   │   │   ├── auditService.ts
+│   │   │   └── notificationService.ts
+│   │   ├── hooks/                        ← Custom React hooks
+│   │   ├── utils/                        ← Helper functions, formatters
+│   │   ├── types/                        ← TypeScript type definitions
+│   │   ├── constants/                    ← App-wide constants
+│   │   ├── routes/                       ← Route definitions & guards
+│   │   │   ├── AppRouter.tsx
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── styles/                       ← Global styles, theme tokens
+│   │   │   ├── global.css
+│   │   │   └── theme.ts
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.ts
 │
-├── 📁 mobile/                                    ← React Native mobile app
-│   ├── 📄 package.json
-│   ├── 📄 tsconfig.json
-│   ├── 📄 app.json                               ← Expo / RN config
-│   │
-│   └── 📁 src/
-│       ├── 📁 screens/
-│       │   ├── LoginScreen.tsx
-│       │   ├── TravelRequestScreen.tsx
-│       │   ├── ExpenseClaimScreen.tsx            ← Camera + OCR receipt
-│       │   ├── ApprovalScreen.tsx
-│       │   └── NotificationScreen.tsx
-│       ├── 📁 components/
-│       │   ├── CameraCapture.tsx
-│       │   ├── BiometricAuth.tsx
-│       │   └── OfflineBanner.tsx
-│       ├── 📁 services/
-│       │   ├── offlineSync.ts                    ← Local storage + sync queue
-│       │   └── pushNotification.ts               ← FCM integration
-│       └── 📁 navigation/
-│           └── AppNavigator.tsx
+├── backend/                              ← Node.js NestJS Backend
+│   ├── src/
+│   │   ├── main.ts                       ← App entry point
+│   │   ├── app.module.ts                 ← Root module
+│   │   ├── config/                       ← Environment & app config
+│   │   │   ├── database.config.ts
+│   │   │   ├── redis.config.ts
+│   │   │   ├── jwt.config.ts
+│   │   │   └── app.config.ts
+│   │   ├── common/                       ← Shared utilities
+│   │   │   ├── decorators/
+│   │   │   ├── filters/                  ← Exception filters
+│   │   │   ├── guards/                   ← Auth & RBAC guards
+│   │   │   ├── interceptors/
+│   │   │   ├── middleware/
+│   │   │   ├── pipes/                    ← Validation pipes
+│   │   │   └── utils/
+│   │   ├── modules/                      ← Domain Modules
+│   │   │   ├── auth/
+│   │   │   │   ├── auth.module.ts
+│   │   │   │   ├── auth.controller.ts
+│   │   │   │   ├── auth.service.ts
+│   │   │   │   ├── strategies/           ← JWT, SSO/SAML strategies
+│   │   │   │   └── dto/
+│   │   │   ├── users/
+│   │   │   │   ├── users.module.ts
+│   │   │   │   ├── users.controller.ts
+│   │   │   │   ├── users.service.ts
+│   │   │   │   ├── entities/user.entity.ts
+│   │   │   │   └── dto/
+│   │   │   ├── travel-request/
+│   │   │   │   ├── travel-request.module.ts
+│   │   │   │   ├── travel-request.controller.ts
+│   │   │   │   ├── travel-request.service.ts
+│   │   │   │   ├── entities/travel-request.entity.ts
+│   │   │   │   └── dto/
+│   │   │   ├── approvals/
+│   │   │   │   ├── approvals.module.ts
+│   │   │   │   ├── approvals.controller.ts
+│   │   │   │   ├── approvals.service.ts
+│   │   │   │   ├── workflow.engine.ts    ← Approval chain logic
+│   │   │   │   ├── entities/approval.entity.ts
+│   │   │   │   └── dto/
+│   │   │   ├── expense-claims/
+│   │   │   │   ├── expense-claims.module.ts
+│   │   │   │   ├── expense-claims.controller.ts
+│   │   │   │   ├── expense-claims.service.ts
+│   │   │   │   ├── entities/expense-claim.entity.ts
+│   │   │   │   └── dto/
+│   │   │   ├── documents/
+│   │   │   │   ├── documents.module.ts
+│   │   │   │   ├── documents.controller.ts
+│   │   │   │   ├── documents.service.ts  ← File upload & storage
+│   │   │   │   └── dto/
+│   │   │   ├── policy-engine/
+│   │   │   │   ├── policy-engine.module.ts
+│   │   │   │   ├── policy-engine.service.ts ← Rule evaluation logic
+│   │   │   │   ├── policy-rules.controller.ts
+│   │   │   │   ├── entities/policy-rule.entity.ts
+│   │   │   │   └── dto/
+│   │   │   ├── reimbursement/
+│   │   │   │   ├── reimbursement.module.ts
+│   │   │   │   ├── reimbursement.controller.ts
+│   │   │   │   ├── reimbursement.service.ts
+│   │   │   │   ├── entities/reimbursement.entity.ts
+│   │   │   │   └── dto/
+│   │   │   ├── notifications/
+│   │   │   │   ├── notifications.module.ts
+│   │   │   │   ├── notifications.service.ts
+│   │   │   │   ├── email.provider.ts
+│   │   │   │   └── templates/           ← Email HTML templates
+│   │   │   ├── reports/
+│   │   │   │   ├── reports.module.ts
+│   │   │   │   ├── reports.controller.ts
+│   │   │   │   ├── reports.service.ts
+│   │   │   │   └── dto/
+│   │   │   └── audit-logs/
+│   │   │       ├── audit-logs.module.ts
+│   │   │       ├── audit-logs.service.ts
+│   │   │       ├── audit-logs.controller.ts
+│   │   │       └── entities/audit-log.entity.ts
+│   │   └── integrations/                ← External system connectors
+│   │       ├── hrms/
+│   │       │   ├── hrms.module.ts
+│   │       │   ├── hrms.service.ts       ← HRMS sync job
+│   │       │   └── hrms.types.ts
+│   │       ├── banking/
+│   │       │   ├── banking.module.ts
+│   │       │   ├── banking.service.ts    ← Payment initiation
+│   │       │   └── banking.types.ts
+│   │       └── sso/
+│   │           ├── sso.module.ts
+│   │           └── sso.strategy.ts
+│   ├── test/                             ← End-to-end tests (Jest)
+│   │   ├── auth.e2e-spec.ts
+│   │   ├── travel-request.e2e-spec.ts
+│   │   └── expense-claims.e2e-spec.ts
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── nest-cli.json
 │
-├── 📁 infrastructure/                            ← DevOps & deployment (KPI 15)
-│   ├── 📁 docker/
-│   │   ├── 📄 docker-compose.yml                 ← Local + staging multi-container
-│   │   ├── 📄 docker-compose.prod.yml
-│   │   └── 📁 nginx/
-│   │       └── nginx.conf                        ← Reverse proxy config
-│   │
-│   ├── 📁 kubernetes/
-│   │   ├── 📁 helm/
-│   │   │   └── 📁 etems/
-│   │   │       ├── Chart.yaml
-│   │   │       ├── values.yaml
-│   │   │       ├── values-prod.yaml
-│   │   │       └── 📁 templates/
-│   │   │           ├── backend-deployment.yaml
-│   │   │           ├── frontend-deployment.yaml
-│   │   │           ├── postgres-statefulset.yaml
-│   │   │           ├── redis-deployment.yaml
-│   │   │           ├── ingress.yaml
-│   │   │           └── hpa.yaml                  ← Horizontal Pod Autoscaler
-│   │   └── 📁 manifests/
-│   │       └── secrets.yaml.template
-│   │
-│   ├── 📁 monitoring/
-│   │   ├── prometheus.yml
-│   │   ├── grafana-dashboard.json
+├── database/                             ← Database Migrations & Seeds
+│   ├── migrations/
+│   │   ├── 001_create_users.sql
+│   │   ├── 002_create_travel_requests.sql
+│   │   ├── 003_create_expense_claims.sql
+│   │   ├── 004_create_approvals.sql
+│   │   ├── 005_create_reimbursements.sql
+│   │   ├── 006_create_policy_rules.sql
+│   │   ├── 007_create_audit_logs.sql
+│   │   ├── 008_create_notifications.sql
+│   │   └── 009_create_documents.sql
+│   ├── seeds/
+│   │   ├── roles.seed.sql
+│   │   ├── policy_rules.seed.sql
+│   │   └── demo_users.seed.sql
+│   └── schema.sql                        ← Master schema (consolidated)
+│
+├── infrastructure/                       ← DevOps & Infrastructure
+│   ├── docker/
+│   │   ├── Dockerfile.frontend
+│   │   ├── Dockerfile.backend
+│   │   └── docker-compose.yml            ← Local dev full-stack setup
+│   ├── kubernetes/
+│   │   ├── namespace.yaml
+│   │   ├── frontend-deployment.yaml
+│   │   ├── backend-deployment.yaml
+│   │   ├── postgres-statefulset.yaml
+│   │   ├── redis-deployment.yaml
+│   │   ├── ingress.yaml
+│   │   └── secrets.yaml
+│   ├── ci-cd/
+│   │   ├── .github/
+│   │   │   └── workflows/
+│   │   │       ├── build-test.yml        ← PR checks
+│   │   │       ├── deploy-uat.yml        ← UAT deployment
+│   │   │       └── deploy-prod.yml       ← Production deployment
+│   │   └── scripts/
+│   │       ├── build.sh
+│   │       └── deploy.sh
+│   ├── monitoring/
+│   │   ├── prometheus/
+│   │   │   └── prometheus.yml
+│   │   ├── grafana/
+│   │   │   └── dashboards/
+│   │   │       ├── system-health.json
+│   │   │       └── kpi-metrics.json
 │   │   └── elk/
 │   │       ├── logstash.conf
-│   │       └── kibana-dashboard.json
-│   │
-│   └── 📁 scripts/
-│       ├── deploy.sh
-│       ├── rollback.sh
-│       └── db-backup.sh
+│   │       └── kibana-dashboards/
+│   └── terraform/                        ← Cloud infrastructure (IaC)
+│       ├── main.tf
+│       ├── variables.tf
+│       └── outputs.tf
 │
-├── 📁 .github/                                   ← CI/CD pipeline (KPI 15)
-│   └── 📁 workflows/
-│       ├── ci.yml                                ← Build, test, lint
-│       ├── cd-staging.yml                        ← Deploy to staging
-│       └── cd-production.yml                     ← Deploy to production
+├── docs/                                 ← Technical Documentation
+│   ├── api/
+│   │   └── openapi.yaml                  ← OpenAPI / Swagger spec
+│   ├── architecture/
+│   │   ├── system-architecture.md
+│   │   ├── database-schema.md
+│   │   └── integration-design.md
+│   └── runbooks/
+│       ├── deployment-runbook.md
+│       ├── incident-response.md
+│       └── helpdesk-support.md
 │
-├── 📁 docs/                                      ← Documentation (KPI 16)
-│   ├── 📄 openapi.yaml                           ← OpenAPI 3.0 spec
-│   ├── 📄 user-guide.md                          ← Employee / Manager / Finance guide
-│   ├── 📄 admin-guide.md                         ← HR Admin + system config guide
-│   ├── 📄 architecture.md                        ← System architecture overview
-│   ├── 📄 api-changelog.md                       ← API version history
-│   └── 📁 diagrams/
-│       ├── system-context.png
-│       ├── approval-workflow.png
-│       └── er-diagram.png
+├── Agent/                                ← (Already exists above)
 │
-├── 📁 Agent/                                     ← Agent reference documents
-│   ├── 📄 project_scope.md                       ← KPI constraints, FR/NFR, stopping points
-│   └── 📄 project_boundary.md                    ← THIS FILE — summary + folder structure
-│
-├── 📁 prd-kpi-2.6.26/                            ← Source requirement documents
-│   ├── 📄 PRD_ETEMS.md
-│   └── 📄 kpi.md
-│
-├── 📄 .gitignore
-├── 📄 README.md
-└── 📄 LICENSE
+├── .env.example                          ← Environment variable template
+├── .gitignore
+├── README.md                             ← Project overview & setup guide
+└── package.json                          ← Monorepo root (optional)
 ```
 
 ---
 
-## 4. Module-to-KPI Mapping
+## 6. Module Boundary Definitions
 
-| Module / Folder | KPI(s) Covered |
-|-----------------|----------------|
-| `backend/auth/` | KPI 1 – User Management & Access Control |
-| `backend/user/` | KPI 1 – Profile, Delegation, HRMS Sync |
-| `backend/travel/` | KPI 2 – Travel Request Management |
-| `backend/approval/` | KPI 3 – Approval Workflow Engine |
-| `backend/expense/` | KPI 4 – Expense Claim Management |
-| `backend/policy/` | KPI 5 – Policy & Compliance Engine |
-| `backend/finance/` | KPI 6 – Reimbursement & Finance Processing |
-| `backend/booking/` | KPI 7 – Booking & Vendor Management |
-| `backend/notification/` | KPI 8 – Notifications & Communication |
-| `backend/reporting/` | KPI 9 – Reporting & Analytics |
-| `backend/budget/` | KPI 10 – Budget Management |
-| `mobile/` | KPI 11 – Mobile Application |
-| `frontend/` (responsive) | KPI 12 – Responsive Web Design |
-| `backend/config/SecurityConfig` | KPI 13 – Security & Compliance |
-| `backend/integration/` | KPI 14 – Integration & Interoperability |
-| `infrastructure/` + `.github/` | KPI 15 – Docker & Deployment |
-| `test/` + `docs/` | KPI 16 – Testing & Documentation |
+Each module has a clearly defined responsibility boundary. No module should handle logic belonging to another.
 
----
-
-## 5. Database Schema Boundaries
-
-### Core Entities
-```
-users                   ← All system users, roles, grades
-user_profiles           ← Extended profile (bank, dept, cost center)
-delegations             ← Approval delegations per user
-travel_requests         ← Parent travel request entity
-travel_itineraries      ← Per-leg itinerary entries
-advance_requests        ← Cash advance linked to travel request
-expense_claims          ← Expense claim header per travel request
-expense_line_items      ← Itemized expenses with OCR data
-receipts                ← Receipt file metadata (S3 keys)
-approval_chains         ← Configured workflow chain definitions
-approval_actions        ← Per-action log (approve/reject/return)
-audit_logs              ← Immutable system-wide audit trail
-travel_policies         ← Policy config by grade/category/destination
-policy_versions         ← Historical policy snapshots with effective dates
-blackout_periods        ← Restricted travel date ranges
-vendor_list             ← Approved vendor registry
-bookings                ← Flight/hotel/cab booking records
-visa_applications       ← Visa tracking per travel request
-reimbursements          ← Finance processing records
-erp_export_records      ← ERP/payroll export payloads and status
-budgets                 ← Annual budget allocations
-budget_revisions        ← Mid-year revision requests
-notification_templates  ← Configurable message templates
-notification_logs       ← Sent notification records
-```
+| Module | Owned Responsibility | Does NOT Handle |
+|--------|---------------------|----------------|
+| **Auth Module** | Login, SSO, session, token management | User profile data, role config |
+| **Users Module** | Employee profiles, roles, org hierarchy | Authentication, expense data |
+| **Travel Request Module** | Create, edit, cancel travel requests | Approval logic, expense submissions |
+| **Approvals Module** | Approval chain routing, SLA timers, escalation | Travel request creation, expense verification |
+| **Expense Claims Module** | Expense line items, claim submission | Receipt storage, policy validation |
+| **Documents Module** | File upload, storage, retrieval, versioning | Expense logic, policy rules |
+| **Policy Engine Module** | Rule evaluation against expense/request data | Expense storage, approval routing |
+| **Reimbursement Module** | Payment workflow, banking API trigger, status | Expense claim creation, finance dashboards |
+| **Notifications Module** | Email & in-app dispatch, template rendering | Business logic, approval decisions |
+| **Reports Module** | Pre-built report generation, data aggregation | Real-time KPI dashboards |
+| **Audit Logs Module** | Immutable event capture, log search & export | Business transactions, user management |
+| **Dashboard / Analytics** | KPI widgets, real-time metrics aggregation | Raw data storage, transaction processing |
+| **HRMS Integration** | Employee master sync from external HRMS | Auth, expense, or travel logic |
+| **Banking Integration** | Payment initiation and status polling | Reimbursement decision logic |
 
 ---
 
-## 6. Integration Boundary Map
+## 7. Data Boundary
 
-```
-ETEMS Backend
-     │
-     ├──► HRMS System           (Scheduled API sync — 24hr cadence)
-     │        Syncs: employees, org hierarchy, grade, cost center, manager
-     │
-     ├──► ERP / Payroll         (Nightly batch + real-time API)
-     │        Pushes: approved reimbursements, GL code, cost center, tax meta
-     │        Supports: SAP, Oracle, Workday
-     │
-     ├──► Corporate IdP (SSO)   (Per-request JWT validation)
-     │        Protocol: SAML 2.0 / OAuth 2.0
-     │        Handles: login, session, credential reset
-     │
-     ├──► GDS (Amadeus/Sabre)   (Phase 1: Read-only PNR fetch)
-     │        Used by: Travel Desk portal only
-     │
-     ├──► AWS Textract           (Per-receipt OCR call)
-     │        Extracts: vendor, amount, currency, date, GST
-     │        Fallback: Tesseract (local)
-     │
-     ├──► Forex API             (Daily scheduled fetch)
-     │        Provides: daily exchange rates per currency pair
-     │        Rate stored per claim line item at time of submission
-     │
-     ├──► AWS S3 / Azure Blob   (File upload/download)
-     │        Stores: receipts, travel documents
-     │        Access: signed time-limited URLs only
-     │
-     ├──► SendGrid              (Transactional email)
-     ├──► Twilio                (SMS / WhatsApp alerts)
-     └──► Firebase FCM          (Mobile push notifications)
-```
+### Core Data Entities & Ownership
+
+| Entity | Owner Module | Shared With (Read-Only) |
+|--------|-------------|------------------------|
+| `users` | Users Module | All modules (for user resolution) |
+| `roles` | Users Module | Auth Module (for RBAC) |
+| `travel_requests` | Travel Request Module | Approvals, Expense Claims, Reports |
+| `approvals` | Approvals Module | Travel Request, Expense Claims, Audit |
+| `expense_claims` | Expense Claims Module | Reimbursement, Policy Engine, Reports |
+| `expense_line_items` | Expense Claims Module | Policy Engine, Reports |
+| `documents` | Documents Module | Expense Claims, Audit Logs |
+| `policy_rules` | Policy Engine Module | Expense Claims (for validation) |
+| `reimbursements` | Reimbursement Module | Finance Dashboard, Reports, Audit |
+| `notifications` | Notifications Module | All modules (for dispatch triggers) |
+| `audit_logs` | Audit Logs Module | Read-only by Auditors via Audit UI |
+
+### Data Classification
+
+| Classification | Examples | Access Control |
+|---------------|---------|----------------|
+| **Public** | System announcements, policy documents | All authenticated users |
+| **Internal** | Travel requests, expense claims | Own records + assigned managers |
+| **Confidential** | Salary-linked reimbursements, HR data | Finance + HR + Admin roles only |
+| **Restricted** | Audit logs, security events | Auditor + Admin roles only |
 
 ---
 
-## 7. Deployment Boundary
+## 8. Infrastructure Boundary
 
-```
-Local Dev                   Staging                     Production
-─────────────               ─────────────               ─────────────
-docker-compose.yml          docker-compose.prod.yml     Kubernetes (Helm)
-  ├─ frontend               Same stack + env vars       ├─ frontend pods (HPA)
-  ├─ backend                Deployed via CI/CD          ├─ backend pods (HPA)
-  ├─ postgres               on PR merge to develop      ├─ postgres (StatefulSet)
-  ├─ redis                                              ├─ redis
-  └─ elasticsearch          Secrets via .env file       └─ elasticsearch
-                                                        Secrets via Vault/Secrets Mgr
-                                                        Zero-downtime rolling deploy
-                                                        Cross-region S3 replication
-                                                        Prometheus + Grafana metrics
-                                                        ELK centralized logging
-```
+### Environments
 
----
+| Environment | Purpose | Access |
+|------------|---------|--------|
+| **Development** | Active feature development and unit testing | Engineering team only |
+| **UAT (Staging)** | User Acceptance Testing with pilot users | QA team + pilot business users |
+| **Production** | Live system for all 10,000+ employees | All employees (role-based) |
 
-## 8. Phase Boundaries
+### Infrastructure Components (In Scope)
 
-### Phase 1 (In Scope — Current Build)
-- All 16 KPIs as defined in `kpi.md`
-- English-only UI
-- GDS read-only integration for Travel Desk
-- Primary operating geography payroll/ERP only
-- New employee data only (no historical migration)
+| Component | Technology | Purpose |
+|----------|-----------|---------|
+| Frontend Hosting | Docker + Kubernetes / CDN | Serve React.js application |
+| Backend API | Docker + Kubernetes | NestJS API services |
+| Primary Database | PostgreSQL (managed cloud) | All transactional data |
+| Cache Layer | Redis (managed cloud) | Session management, KPI query caching |
+| File Storage | AWS S3 / Azure Blob Storage | Receipt and document storage |
+| CI/CD Pipeline | GitHub Actions | Build, test, deploy automation |
+| Monitoring | Prometheus + Grafana | System health and KPI metrics |
+| Log Management | ELK Stack | Centralized log aggregation |
+| Infrastructure as Code | Terraform | Cloud resource provisioning |
 
-### Phase 2 (Future — Not In Scope)
-| Feature | Notes |
-|---------|-------|
-| Direct GDS booking by employees | Self-service booking without Travel Desk |
-| AI/ML recommendations | Travel suggestions, expense anomaly detection |
-| Carbon footprint tracking | Per-trip emissions reporting |
-| Multi-country payroll | Beyond primary geography |
-| Historical data migration | Excel/paper record import |
-| Multi-language / i18n | Regional language support |
-| Native vendor marketplace | Employee self-service booking portal |
-| GDS write operations | Full booking create/modify via Amadeus/Sabre |
+### Infrastructure NOT In Scope
+- On-premise hardware procurement
+- Physical network infrastructure
+- End-user device procurement (laptops, phones)
+- Custom data center setup
 
 ---
 
-## 9. Document Index (Agent Reference)
+## 9. Boundary Constraints Summary
 
-| Document | Location | Purpose |
-|----------|----------|---------|
-| `PRD_ETEMS.md` | `prd-kpi-2.6.26/` | Full product requirements document |
-| `kpi.md` | `prd-kpi-2.6.26/` | 16 KPIs with acceptance criteria |
-| `project_scope.md` | `Agent/` | KPI constraints, FR/NFR, stopping points |
-| `project_boundary.md` | `Agent/` | Project summary + complete folder structure |
+The following table consolidates all critical constraints that define what is **in**, **out**, or **deferred** in this project.
+
+| Area | In Boundary (MVP) | Out of Boundary | Deferred to Phase 2 |
+|------|------------------|----------------|---------------------|
+| **Users** | 10,000 employees, managers, finance, HR, compliance, admin, auditors | Contractors, vendors, external partners | — |
+| **Travel** | Domestic travel requests, approvals, policy validation | International forex management, travel booking | Travel booking integration |
+| **Expenses** | Expense claims, receipt upload, manual entry | OCR auto-extraction, AI fraud detection | OCR, AI fraud detection |
+| **Approvals** | Multi-level workflow, SLA timers, auto-escalation | Bulk approval, delegation of authority | Delegation feature |
+| **Reimbursements** | Bank payment integration, status tracking | Multi-currency payments, payroll integration | Payroll integration |
+| **Reporting** | Pre-built operational reports | Custom report builder, BI tool embedding | Advanced reporting |
+| **Mobile** | Mobile-responsive web portal | Native iOS / Android application | Native mobile app |
+| **Integrations** | HRMS, SSO, Banking API, Email | ERP, SMS, Travel vendors, OCR | ERP, SMS, Travel, OCR |
+| **Analytics** | Real-time KPI dashboards | Predictive analytics, budget forecasting | AI analytics |
+| **Notifications** | Email + in-app | SMS, push notifications | SMS gateway |
+| **Data Migration** | New records from Go-Live | Historical Excel/email data migration | Not planned |
+| **Infrastructure** | Cloud-hosted, containerized | On-premise, hybrid cloud | — |
+
+---
+
+## Revision History
+
+| Version | Date | Author | Change Description |
+|---------|------|--------|-------------------|
+| 1.0 | 2026-06-05 | Senior PM & Architect | Initial document creation |
+
+---
+
+*This Project Boundary Document defines the explicit boundaries of the Enterprise Employee Travel & Expense Management System — covering system scope, actor responsibilities, module ownership, data classifications, integration touchpoints, and infrastructure boundaries. All development and stakeholder decisions should reference this document alongside the KPI Document, PRD, and Project Scope Document.*

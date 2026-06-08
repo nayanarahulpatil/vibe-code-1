@@ -1,0 +1,70 @@
+version: '3.9'
+
+services:
+  # ── PostgreSQL ────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: tems-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tems_user
+      POSTGRES_PASSWORD: tems_password
+      POSTGRES_DB: tems_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database:/database
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./database/seeds/roles.seed.sql:/docker-entrypoint-initdb.d/02_roles.sql
+      - ./database/seeds/policy_rules.seed.sql:/docker-entrypoint-initdb.d/03_policy_rules.sql
+      - ./database/seeds/demo_users.seed.sql:/docker-entrypoint-initdb.d/04_demo_users.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tems_user -d tems_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tems-network
+
+  # ── Redis ─────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: tems-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tems-network
+
+  # ── pgAdmin (DB GUI) ──────────────────────────────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: tems-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@tems.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - tems-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  tems-network:
+    driver: bridge
