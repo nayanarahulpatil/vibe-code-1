@@ -1,553 +1,142 @@
-# Project Boundary Document
-## Enterprise Employee Travel & Expense Management System
+# Project Boundary — Enterprise Employee Travel & Expense Management System (TEMS)
 
-**Document Version:** 1.0  
-**Prepared By:** Senior Product Manager & Enterprise System Architect  
-**Date:** 2026-06-05  
-**Reference Documents:** `kpi.md` · `prd.md` · `project_scope.md`  
-**Technology Stack:** React.js · Node.js (NestJS) · PostgreSQL · Redis · REST APIs  
-**Deployment Target:** AWS / Azure (Cloud-Hosted, Containerized)
+> **Version:** 1.0 | **Date:** 2026-06-10
+> **Source Documents:** `prd.md` (v1.0) · `kpi.md` (v1.0)
+> **Audience:** Engineering, QA, Product, DevOps
 
 ---
 
-## Table of Contents
-1. [Project Summary](#1-project-summary)
-2. [System Boundary Overview](#2-system-boundary-overview)
-3. [Actor Boundary Map](#3-actor-boundary-map)
-4. [Integration Boundary](#4-integration-boundary)
-5. [Project Directory & Folder Structure](#5-project-directory--folder-structure)
-6. [Module Boundary Definitions](#6-module-boundary-definitions)
-7. [Data Boundary](#7-data-boundary)
-8. [Infrastructure Boundary](#8-infrastructure-boundary)
-9. [Boundary Constraints Summary](#9-boundary-constraints-summary)
+## 1. Code & Execution Constraints
+
+* **No Auto-Commit:** DO NOT commit, push, or modify repository code directly without explicit user approval.
+* **No Unauthorized Commands:** DO NOT execute any terminal commands, scripts, DB migrations, seed scripts, or Docker operations without explicit user confirmation first.
+* **No Direct DB Mutations:** DO NOT write raw SQL against `audit_logs`, `policy_rules`, or `reimbursements` tables outside of the defined service layer. These tables carry regulatory and financial implications.
+* **No Banking API Calls Without Finance Trigger:** The `POST /reimbursements/initiate` endpoint and its underlying banking payload dispatch must only execute when explicitly triggered by a `FINANCE_EXECUTIVE` or `SYSTEM_ADMIN` role. Automated or background-triggered reimbursements are out of scope.
+* **No File System Access Outside `/uploads`:** Document storage is strictly contained to the `./uploads` directory. No symlinks, path traversal, or external storage writes are permitted.
 
 ---
 
-## 1. Project Summary
+## 2. Guardrails & Token Optimization
 
-### What Is This System?
-The **Enterprise Employee Travel & Expense Management System** is a fully digital, centralized web-based platform designed to replace all manual travel and expense processes (email approvals, Excel tracking, paper receipts) with an automated, policy-compliant, and auditable digital workflow.
+* **No Guessing / Assumptions:** DO NOT write code, queries, or logic based on incomplete requirements. If architecture, data structures, role permissions, or policy rules are ambiguous — STOP and ask clarifying questions.
+* **Clarification First:** All 7 system roles (`SYSTEM_ADMIN`, `EMPLOYEE`, `MANAGER`, `FINANCE_EXECUTIVE`, `HR_ADMIN`, `COMPLIANCE_OFFICER`, `AUDITOR`) have distinct, non-overlapping access boundaries. Any new endpoint must have its role guard explicitly declared before implementation begins.
+* **No Scope Creep:** The following are confirmed **out of scope** for v1.0 — do NOT implement, prototype, or stub:
 
-### Who Uses It?
-The system serves **10,000+ employees** across multiple business locations, including the following user roles:
+  | Out of Scope Item | Source Reference |
+  |---|---|
+  | Flight / hotel / cab booking integration | PRD §7 Limitations |
+  | OCR / AI invoice reading | PRD §7 Limitations |
+  | Multi-currency / FX conversion | PRD §7 Limitations |
+  | Native iOS / Android apps | PRD §7 Limitations |
+  | Payroll system integration | PRD §7 Limitations |
+  | SSO / SAML / LDAP / Active Directory | PRD §7 Limitations |
+  | Parallel multi-approver same-step workflows | PRD §7 Limitations |
+  | Automated tax / TDS / GST calculations | PRD §7 Limitations |
+  | Bulk CSV export without admin authorization | PRD §5 Security Exceptions |
 
-| Role | Primary Responsibility in System |
-|------|----------------------------------|
-| **Employee** | Submit travel requests, upload receipts, track reimbursements |
-| **Manager** | Review and approve/reject team travel requests |
-| **Finance Executive** | Verify expense claims, initiate reimbursements |
-| **HR Administrator** | Manage employee master data and org hierarchy |
-| **Compliance Officer** | Configure and audit policy rules |
-| **Auditor** | Read-only access to full audit trail and reports |
-| **System Administrator** | User management, role assignment, system configuration |
-
-### Why This System?
-| Problem (Current State) | Solution (Target State) |
-|------------------------|------------------------|
-| Email-based travel requests | Self-service digital portal with instant routing |
-| 3-day average approval time | < 8-hour automated approval workflow |
-| 15-day reimbursement cycle | < 3-day system-triggered bank payment |
-| 70% policy compliance | > 98% enforced at point of submission |
-| No centralized spend visibility | Real-time KPI dashboards across all spend |
-| 500 helpdesk tickets/month | < 100/month via self-service + notifications |
-| Paper receipts, manual audits | Digital receipts, immutable audit logs |
-
-### Key Business Outcomes
-- **95%+** system adoption across all employees
-- **80% reduction** in approval cycle time
-- **80% reduction** in reimbursement turnaround time
-- **98%+** policy compliance enforcement
-- **25–35%** operational cost reduction
-- **Positive ROI** within 12–18 months post-launch
+* **No Generic Output:** Every KPI, API response, error message, and validation must be specific and traceable to a module. Generic catch-all responses are not acceptable.
 
 ---
 
-## 2. System Boundary Overview
+## 3. Code Quality Standards
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                  SYSTEM BOUNDARY                                     │
-│                                                                      │
-│   ┌────────────────────────────────────────────────────────────┐    │
-│   │                   React.js Web Portal                      │    │
-│   │   Employee Portal · Manager Dashboard · Finance Dashboard  │    │
-│   │   Admin Panel · Audit View · KPI Dashboard                 │    │
-│   └────────────────────────┬───────────────────────────────────┘    │
-│                            │ REST API (HTTPS)                       │
-│   ┌────────────────────────▼───────────────────────────────────┐    │
-│   │              Node.js Backend (NestJS)                      │    │
-│   │  Auth · Users · Travel · Approvals · Expenses · Policy     │    │
-│   │  Reimbursement · Notifications · Reports · Audit Logs      │    │
-│   └──────┬──────────────────┬──────────────────┬──────────────┘    │
-│          │                  │                  │                    │
-│   ┌──────▼──────┐   ┌───────▼──────┐   ┌──────▼──────┐           │
-│   │ PostgreSQL  │   │    Redis     │   │  File Store  │           │
-│   │  (Primary   │   │   (Cache +   │   │ (Receipts &  │           │
-│   │   Database) │   │   Sessions)  │   │  Documents)  │           │
-│   └─────────────┘   └──────────────┘   └─────────────┘           │
-│                                                                      │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │ External Integrations
-         ┌─────────────────────┼──────────────────────┐
-         │                     │                      │
-   ┌─────▼──────┐      ┌───────▼──────┐      ┌───────▼──────┐
-   │    HRMS    │      │  SSO / IdP   │      │   Banking    │
-   │ (Employee  │      │  (Corporate  │      │    API       │
-   │  Master)   │      │   Identity)  │      │ (Payments)   │
-   └────────────┘      └──────────────┘      └─────────────┘
-```
+* **Modular:** Write single-responsibility, highly decoupled modules. Each of the 12 identified system modules (M1–M12) must remain independently buildable and testable:
+
+  | Module | Boundary |
+  |---|---|
+  | M1 — Auth & RBAC | `src/modules/auth` — JWT issuance, guards, strategies only |
+  | M2 — User & Org | `src/modules/users` — profile CRUD, hierarchy management only |
+  | M3 — Travel Request | `src/modules/travel-request` — TR lifecycle state machine only |
+  | M4 — Approval Workflow | `src/modules/approvals` — step orchestration, SLA tracking, escalation only |
+  | M5 — Expense Claims | `src/modules/expense-claims` — claim + line item management only |
+  | M6 — Policy Engine | `src/modules/policy-engine` — rule evaluation, flagging only |
+  | M7 — Documents | `src/modules/documents` — Multer upload, file metadata only |
+  | M8 — Reimbursement | `src/modules/reimbursement` — payment lifecycle, bank payload only |
+  | M9 — Notifications | `src/modules/notifications` — dispatch only; no business logic |
+  | M10 — Audit Logs | `src/modules/audit-logs` — write-only; no update/delete operations |
+  | M11 — Reports | `src/modules/reports` — read-only aggregations, no mutations |
+  | M12 — Dashboard | `src/modules/dashboard` — role-scoped summary views only |
+
+* **Maintainable:** Prioritize clean, self-documenting code with predictable data flows. No business logic inside controllers — all logic must reside in service classes.
 
 ---
 
-## 3. Actor Boundary Map
+## 4. Role & Permission Boundaries
 
-### Internal Actors (Within System Boundary)
+All access enforcement is derived from `prd.md §4 API Design` and `kpi.md KPI-AUTH-03`:
 
-| Actor | Access Level | Boundary |
-|-------|-------------|---------|
-| Employee | Own requests, expenses, receipts, status | Read/Write own records only |
-| Manager | Team travel requests, approval actions | Read team; Write approvals only |
-| Finance Executive | All expense claims, reimbursement queue | Read all; Write reimbursement decisions |
-| Compliance Officer | Policy rules configuration | Read all; Write policy configs |
-| HR Administrator | Employee profiles, org hierarchy | Write user/role data only |
-| Auditor | Full audit trail, reports | Read-only, no write access |
-| System Administrator | Full system configuration | Write system settings, roles |
-
-### External Actors (Outside System Boundary)
-
-| External Actor | Interaction Type | Data Exchanged |
-|---------------|-----------------|----------------|
-| HRMS System | Inbound Sync | Employee master data (read-only pull) |
-| SSO / Identity Provider | Authentication | Auth token / session |
-| Banking System | Outbound API | Payment initiation, payment status |
-| Email Service (SMTP/SES) | Outbound | Notification emails |
-| SMS Gateway *(Phase 2)* | Outbound | SMS alerts |
-| ERP System *(Phase 2)* | Bidirectional | Budget data, cost center mapping |
-| Travel Booking Vendors *(Phase 2)* | Inbound | Flight, hotel, cab bookings |
+| Role | Permitted Actions | Prohibited Actions |
+|---|---|---|
+| `EMPLOYEE` | Create/view own TR and claims; upload receipts; cancel own TR | View others' data; approve/reject; initiate reimbursement; modify policy rules |
+| `MANAGER` | View team pending approvals; approve/reject TRs within hierarchy | Approve own TR (403); action steps outside their hierarchy (403); access Finance endpoints |
+| `FINANCE_EXECUTIVE` | View all claims; approve/reject claims; initiate reimbursements; view all reimbursements | Approve travel requests; modify org hierarchy; create/toggle policy rules |
+| `HR_ADMIN` | Manage employee profiles and org hierarchy; view all TRs | Approve claims; initiate payments; create policy rules |
+| `COMPLIANCE_OFFICER` | Create/update/toggle policy rules | Approve TRs or claims; view reimbursement banking payloads |
+| `AUDITOR` | Read-only access to audit logs, claims, reimbursements, and reports | ANY write operation (POST/PATCH/PUT/DELETE returns 403) |
+| `SYSTEM_ADMIN` | Full system access | Must still respect self-approval block (KPI-APP-03) |
 
 ---
 
-## 4. Integration Boundary
+## 5. Data & Validation Boundaries
 
-### Phase 1 Integrations (In Scope — MVP)
+Derived from `prd.md §5 Edge Cases` and `kpi.md` module KPIs:
 
-```
-System ◄──── HRMS ──────► Employee Master Data (read-only sync)
-System ◄──── SSO  ──────► Authentication & Authorization
-System ────► Banking ────► Reimbursement Payment Initiation
-System ────► Email  ────► Workflow Notifications & Alerts
-```
-
-| Integration | Direction | Protocol | MVP | Phase 2 |
-|------------|----------|---------|-----|---------|
-| HRMS | Inbound (pull) | REST API | ✅ | — |
-| SSO / Identity Provider | Bidirectional | SAML / OAuth2 | ✅ | — |
-| Banking API | Outbound | REST API | ✅ | — |
-| Email Service | Outbound | SMTP / SES | ✅ | — |
-| SMS Gateway | Outbound | REST API | ❌ | ✅ |
-| ERP System | Bidirectional | REST API | ❌ | ✅ |
-| Travel Booking Vendors | Inbound | REST API | ❌ | ✅ |
-| OCR Engine | Inbound | REST API | ❌ | ✅ |
+| Rule | Enforcement Point | KPI Reference |
+|---|---|---|
+| `departure_date` must be before `return_date` | Service layer on TR create/update | KPI-TR-04 |
+| `advance_amount` ≤ `estimated_cost` | Service layer on TR create/update | KPI-TR-05 |
+| `expense_date` must fall within trip `[departure_date, return_date]` | Line item service on add | KPI-EXP-04 |
+| One expense claim per approved travel request | DB unique constraint + service guard | KPI-EXP-01 |
+| Claims can only be created against APPROVED travel requests | Service layer status check | KPI-EXP-07 |
+| Line item `amount` must be > 0 | Input validation (DTO) | KPI-EXP-05 |
+| Expense > ₹500 without `receipt_id` → policy flag | Policy Engine service | KPI-POL-04 |
+| Duplicate same-employee/category/amount/date claim → 409 | Policy Engine duplicate check | KPI-POL-05 |
+| File upload: only `.pdf`, `.jpg`, `.jpeg`, `.png` ≤ 5 MB | Multer filter + size guard | KPI-DOC-01, KPI-DOC-02 |
+| Reimbursement only for `APPROVED` expense claims | Service pre-condition check | KPI-RMB-02 |
+| Reimbursement blocked if bank details (account/IFSC) are NULL | Service pre-condition check | KPI-RMB-07 |
+| `approver_id` ≠ `employee_id` (self-approval block) | Approval workflow service | KPI-APP-03 |
+| Org hierarchy loop: A → B → A not permitted | User service on manager_id update | KPI-USR-02 |
 
 ---
 
-## 5. Project Directory & Folder Structure
+## 6. Audit & Compliance Boundaries
 
-The following is the **recommended folder structure** for the full project codebase, reflecting the technology stack and module architecture defined in the PRD.
+Derived from `kpi.md Module M11` and `prd.md §5 Security Exceptions`:
 
-```
-enterprise-tems/                          ← Root Project Directory
-│
-├── Agent/                                ← Project Documentation
-│   ├── kpi.md                            ← KPI Definition Document
-│   ├── prd.md                            ← Product Requirements Document
-│   ├── project_scope.md                  ← Project Scope Document
-│   └── project_boundary.md              ← This Document
-│
-├── frontend/                             ← React.js Frontend Application
-│   ├── public/
-│   │   ├── index.html
-│   │   └── favicon.ico
-│   ├── src/
-│   │   ├── assets/                       ← Images, icons, fonts
-│   │   ├── components/                   ← Shared/reusable UI components
-│   │   │   ├── common/
-│   │   │   │   ├── Button/
-│   │   │   │   ├── Modal/
-│   │   │   │   ├── Table/
-│   │   │   │   ├── Form/
-│   │   │   │   └── Loader/
-│   │   │   ├── layout/
-│   │   │   │   ├── Sidebar/
-│   │   │   │   ├── Header/
-│   │   │   │   ├── Footer/
-│   │   │   │   └── NotificationBell/
-│   │   │   └── charts/
-│   │   │       ├── KPIWidget/
-│   │   │       ├── SpendChart/
-│   │   │       └── ComplianceGauge/
-│   │   ├── modules/                      ← Feature Modules (1 per domain)
-│   │   │   ├── auth/
-│   │   │   │   ├── LoginPage.tsx
-│   │   │   │   ├── SSOCallback.tsx
-│   │   │   │   └── authSlice.ts
-│   │   │   ├── travel-request/
-│   │   │   │   ├── TravelRequestForm.tsx
-│   │   │   │   ├── TravelRequestList.tsx
-│   │   │   │   ├── TravelRequestDetail.tsx
-│   │   │   │   └── travelSlice.ts
-│   │   │   ├── approvals/
-│   │   │   │   ├── ApprovalQueue.tsx
-│   │   │   │   ├── ApprovalDetail.tsx
-│   │   │   │   └── approvalsSlice.ts
-│   │   │   ├── expense-claims/
-│   │   │   │   ├── ExpenseClaimForm.tsx
-│   │   │   │   ├── ExpenseClaimList.tsx
-│   │   │   │   ├── ReceiptUpload.tsx
-│   │   │   │   └── expenseSlice.ts
-│   │   │   ├── reimbursement/
-│   │   │   │   ├── ReimbursementQueue.tsx
-│   │   │   │   ├── PaymentStatus.tsx
-│   │   │   │   └── reimbursementSlice.ts
-│   │   │   ├── dashboard/
-│   │   │   │   ├── EmployeeDashboard.tsx
-│   │   │   │   ├── ManagerDashboard.tsx
-│   │   │   │   ├── FinanceDashboard.tsx
-│   │   │   │   └── KPIDashboard.tsx
-│   │   │   ├── reports/
-│   │   │   │   ├── ReportList.tsx
-│   │   │   │   ├── ReportViewer.tsx
-│   │   │   │   └── reportsSlice.ts
-│   │   │   ├── audit/
-│   │   │   │   ├── AuditLogViewer.tsx
-│   │   │   │   └── auditSlice.ts
-│   │   │   ├── notifications/
-│   │   │   │   ├── NotificationCenter.tsx
-│   │   │   │   └── notificationSlice.ts
-│   │   │   ├── policy/
-│   │   │   │   ├── PolicyRuleList.tsx
-│   │   │   │   ├── PolicyRuleForm.tsx
-│   │   │   │   └── policySlice.ts
-│   │   │   └── admin/
-│   │   │       ├── UserManagement.tsx
-│   │   │       ├── RoleManagement.tsx
-│   │   │       └── OrgHierarchy.tsx
-│   │   ├── store/                        ← Redux Toolkit Store
-│   │   │   ├── index.ts
-│   │   │   └── rootReducer.ts
-│   │   ├── services/                     ← API call layer (React Query)
-│   │   │   ├── authService.ts
-│   │   │   ├── travelService.ts
-│   │   │   ├── expenseService.ts
-│   │   │   ├── approvalService.ts
-│   │   │   ├── reimbursementService.ts
-│   │   │   ├── reportService.ts
-│   │   │   ├── auditService.ts
-│   │   │   └── notificationService.ts
-│   │   ├── hooks/                        ← Custom React hooks
-│   │   ├── utils/                        ← Helper functions, formatters
-│   │   ├── types/                        ← TypeScript type definitions
-│   │   ├── constants/                    ← App-wide constants
-│   │   ├── routes/                       ← Route definitions & guards
-│   │   │   ├── AppRouter.tsx
-│   │   │   └── ProtectedRoute.tsx
-│   │   ├── styles/                       ← Global styles, theme tokens
-│   │   │   ├── global.css
-│   │   │   └── theme.ts
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── vite.config.ts
-│
-├── backend/                              ← Node.js NestJS Backend
-│   ├── src/
-│   │   ├── main.ts                       ← App entry point
-│   │   ├── app.module.ts                 ← Root module
-│   │   ├── config/                       ← Environment & app config
-│   │   │   ├── database.config.ts
-│   │   │   ├── redis.config.ts
-│   │   │   ├── jwt.config.ts
-│   │   │   └── app.config.ts
-│   │   ├── common/                       ← Shared utilities
-│   │   │   ├── decorators/
-│   │   │   ├── filters/                  ← Exception filters
-│   │   │   ├── guards/                   ← Auth & RBAC guards
-│   │   │   ├── interceptors/
-│   │   │   ├── middleware/
-│   │   │   ├── pipes/                    ← Validation pipes
-│   │   │   └── utils/
-│   │   ├── modules/                      ← Domain Modules
-│   │   │   ├── auth/
-│   │   │   │   ├── auth.module.ts
-│   │   │   │   ├── auth.controller.ts
-│   │   │   │   ├── auth.service.ts
-│   │   │   │   ├── strategies/           ← JWT, SSO/SAML strategies
-│   │   │   │   └── dto/
-│   │   │   ├── users/
-│   │   │   │   ├── users.module.ts
-│   │   │   │   ├── users.controller.ts
-│   │   │   │   ├── users.service.ts
-│   │   │   │   ├── entities/user.entity.ts
-│   │   │   │   └── dto/
-│   │   │   ├── travel-request/
-│   │   │   │   ├── travel-request.module.ts
-│   │   │   │   ├── travel-request.controller.ts
-│   │   │   │   ├── travel-request.service.ts
-│   │   │   │   ├── entities/travel-request.entity.ts
-│   │   │   │   └── dto/
-│   │   │   ├── approvals/
-│   │   │   │   ├── approvals.module.ts
-│   │   │   │   ├── approvals.controller.ts
-│   │   │   │   ├── approvals.service.ts
-│   │   │   │   ├── workflow.engine.ts    ← Approval chain logic
-│   │   │   │   ├── entities/approval.entity.ts
-│   │   │   │   └── dto/
-│   │   │   ├── expense-claims/
-│   │   │   │   ├── expense-claims.module.ts
-│   │   │   │   ├── expense-claims.controller.ts
-│   │   │   │   ├── expense-claims.service.ts
-│   │   │   │   ├── entities/expense-claim.entity.ts
-│   │   │   │   └── dto/
-│   │   │   ├── documents/
-│   │   │   │   ├── documents.module.ts
-│   │   │   │   ├── documents.controller.ts
-│   │   │   │   ├── documents.service.ts  ← File upload & storage
-│   │   │   │   └── dto/
-│   │   │   ├── policy-engine/
-│   │   │   │   ├── policy-engine.module.ts
-│   │   │   │   ├── policy-engine.service.ts ← Rule evaluation logic
-│   │   │   │   ├── policy-rules.controller.ts
-│   │   │   │   ├── entities/policy-rule.entity.ts
-│   │   │   │   └── dto/
-│   │   │   ├── reimbursement/
-│   │   │   │   ├── reimbursement.module.ts
-│   │   │   │   ├── reimbursement.controller.ts
-│   │   │   │   ├── reimbursement.service.ts
-│   │   │   │   ├── entities/reimbursement.entity.ts
-│   │   │   │   └── dto/
-│   │   │   ├── notifications/
-│   │   │   │   ├── notifications.module.ts
-│   │   │   │   ├── notifications.service.ts
-│   │   │   │   ├── email.provider.ts
-│   │   │   │   └── templates/           ← Email HTML templates
-│   │   │   ├── reports/
-│   │   │   │   ├── reports.module.ts
-│   │   │   │   ├── reports.controller.ts
-│   │   │   │   ├── reports.service.ts
-│   │   │   │   └── dto/
-│   │   │   └── audit-logs/
-│   │   │       ├── audit-logs.module.ts
-│   │   │       ├── audit-logs.service.ts
-│   │   │       ├── audit-logs.controller.ts
-│   │   │       └── entities/audit-log.entity.ts
-│   │   └── integrations/                ← External system connectors
-│   │       ├── hrms/
-│   │       │   ├── hrms.module.ts
-│   │       │   ├── hrms.service.ts       ← HRMS sync job
-│   │       │   └── hrms.types.ts
-│   │       ├── banking/
-│   │       │   ├── banking.module.ts
-│   │       │   ├── banking.service.ts    ← Payment initiation
-│   │       │   └── banking.types.ts
-│   │       └── sso/
-│   │           ├── sso.module.ts
-│   │           └── sso.strategy.ts
-│   ├── test/                             ← End-to-end tests (Jest)
-│   │   ├── auth.e2e-spec.ts
-│   │   ├── travel-request.e2e-spec.ts
-│   │   └── expense-claims.e2e-spec.ts
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── nest-cli.json
-│
-├── database/                             ← Database Migrations & Seeds
-│   ├── migrations/
-│   │   ├── 001_create_users.sql
-│   │   ├── 002_create_travel_requests.sql
-│   │   ├── 003_create_expense_claims.sql
-│   │   ├── 004_create_approvals.sql
-│   │   ├── 005_create_reimbursements.sql
-│   │   ├── 006_create_policy_rules.sql
-│   │   ├── 007_create_audit_logs.sql
-│   │   ├── 008_create_notifications.sql
-│   │   └── 009_create_documents.sql
-│   ├── seeds/
-│   │   ├── roles.seed.sql
-│   │   ├── policy_rules.seed.sql
-│   │   └── demo_users.seed.sql
-│   └── schema.sql                        ← Master schema (consolidated)
-│
-├── infrastructure/                       ← DevOps & Infrastructure
-│   ├── docker/
-│   │   ├── Dockerfile.frontend
-│   │   ├── Dockerfile.backend
-│   │   └── docker-compose.yml            ← Local dev full-stack setup
-│   ├── kubernetes/
-│   │   ├── namespace.yaml
-│   │   ├── frontend-deployment.yaml
-│   │   ├── backend-deployment.yaml
-│   │   ├── postgres-statefulset.yaml
-│   │   ├── redis-deployment.yaml
-│   │   ├── ingress.yaml
-│   │   └── secrets.yaml
-│   ├── ci-cd/
-│   │   ├── .github/
-│   │   │   └── workflows/
-│   │   │       ├── build-test.yml        ← PR checks
-│   │   │       ├── deploy-uat.yml        ← UAT deployment
-│   │   │       └── deploy-prod.yml       ← Production deployment
-│   │   └── scripts/
-│   │       ├── build.sh
-│   │       └── deploy.sh
-│   ├── monitoring/
-│   │   ├── prometheus/
-│   │   │   └── prometheus.yml
-│   │   ├── grafana/
-│   │   │   └── dashboards/
-│   │   │       ├── system-health.json
-│   │   │       └── kpi-metrics.json
-│   │   └── elk/
-│   │       ├── logstash.conf
-│   │       └── kibana-dashboards/
-│   └── terraform/                        ← Cloud infrastructure (IaC)
-│       ├── main.tf
-│       ├── variables.tf
-│       └── outputs.tf
-│
-├── docs/                                 ← Technical Documentation
-│   ├── api/
-│   │   └── openapi.yaml                  ← OpenAPI / Swagger spec
-│   ├── architecture/
-│   │   ├── system-architecture.md
-│   │   ├── database-schema.md
-│   │   └── integration-design.md
-│   └── runbooks/
-│       ├── deployment-runbook.md
-│       ├── incident-response.md
-│       └── helpdesk-support.md
-│
-├── Agent/                                ← (Already exists above)
-│
-├── .env.example                          ← Environment variable template
-├── .gitignore
-├── README.md                             ← Project overview & setup guide
-└── package.json                          ← Monorepo root (optional)
-```
+* **Audit logs are write-only.** No UPDATE or DELETE endpoint for `audit_logs` shall exist. No service method may mutate an existing audit record. (KPI-AUD-05)
+* **Every status transition must write an audit log** capturing: `entity_type`, `entity_id`, `old_status`, `new_status`, `actor_id`, `ip_address`, `timestamp`. (KPI-AUD-01)
+* **Policy overrides must be explicitly logged.** When Finance approves a claim with flagged line items, the override action, `user_id`, `claim_id`, and all overridden `flag_reason` values must be captured. (KPI-AUD-02)
+* **Policy rule changes must be logged.** Any creation, modification, or toggle of a `policy_rules` record writes an audit entry with `old_value` and `new_value`. (KPI-AUD-03)
+* **All login events must be captured** — both successful and failed — with `user_email`, `IP`, `user_agent`, and outcome. (KPI-AUD-06 / KPI-AUTH-05)
 
 ---
 
-## 6. Module Boundary Definitions
+## 7. Performance & Reliability Boundaries
 
-Each module has a clearly defined responsibility boundary. No module should handle logic belonging to another.
+Derived from `prd.md §6 Technical KPIs` and `kpi.md Success Criteria`:
 
-| Module | Owned Responsibility | Does NOT Handle |
-|--------|---------------------|----------------|
-| **Auth Module** | Login, SSO, session, token management | User profile data, role config |
-| **Users Module** | Employee profiles, roles, org hierarchy | Authentication, expense data |
-| **Travel Request Module** | Create, edit, cancel travel requests | Approval logic, expense submissions |
-| **Approvals Module** | Approval chain routing, SLA timers, escalation | Travel request creation, expense verification |
-| **Expense Claims Module** | Expense line items, claim submission | Receipt storage, policy validation |
-| **Documents Module** | File upload, storage, retrieval, versioning | Expense logic, policy rules |
-| **Policy Engine Module** | Rule evaluation against expense/request data | Expense storage, approval routing |
-| **Reimbursement Module** | Payment workflow, banking API trigger, status | Expense claim creation, finance dashboards |
-| **Notifications Module** | Email & in-app dispatch, template rendering | Business logic, approval decisions |
-| **Reports Module** | Pre-built report generation, data aggregation | Real-time KPI dashboards |
-| **Audit Logs Module** | Immutable event capture, log search & export | Business transactions, user management |
-| **Dashboard / Analytics** | KPI widgets, real-time metrics aggregation | Raw data storage, transaction processing |
-| **HRMS Integration** | Employee master sync from external HRMS | Auth, expense, or travel logic |
-| **Banking Integration** | Payment initiation and status polling | Reimbursement decision logic |
+| Boundary | Threshold | Enforcement |
+|---|---|---|
+| API response time (p95) | < 300 ms for all CRUD operations | Load testing in Sprint 7 |
+| File upload success rate | ≥ 99.9% for valid files ≤ 5 MB | Integration test coverage |
+| System uptime | ≥ 99.9% (excluding planned maintenance) | Docker health checks + restart policies |
+| Audit log write latency | < 500 ms per action | Async write with non-blocking service |
+| Notification dispatch latency | < 500 ms from triggering event | Async notification service |
+| Payment failure notification | < 60 seconds from FAILED status | Background job monitor on reimbursement state |
+| SLA escalation trigger | ≤ 8 hours from step creation | Scheduled SLA checker service |
 
 ---
 
-## 7. Data Boundary
+## 8. Sprint Delivery Boundaries
 
-### Core Data Entities & Ownership
+Derived from `kpi.md §STEP 2 Implementation Roadmap`:
 
-| Entity | Owner Module | Shared With (Read-Only) |
-|--------|-------------|------------------------|
-| `users` | Users Module | All modules (for user resolution) |
-| `roles` | Users Module | Auth Module (for RBAC) |
-| `travel_requests` | Travel Request Module | Approvals, Expense Claims, Reports |
-| `approvals` | Approvals Module | Travel Request, Expense Claims, Audit |
-| `expense_claims` | Expense Claims Module | Reimbursement, Policy Engine, Reports |
-| `expense_line_items` | Expense Claims Module | Policy Engine, Reports |
-| `documents` | Documents Module | Expense Claims, Audit Logs |
-| `policy_rules` | Policy Engine Module | Expense Claims (for validation) |
-| `reimbursements` | Reimbursement Module | Finance Dashboard, Reports, Audit |
-| `notifications` | Notifications Module | All modules (for dispatch triggers) |
-| `audit_logs` | Audit Logs Module | Read-only by Auditors via Audit UI |
-
-### Data Classification
-
-| Classification | Examples | Access Control |
-|---------------|---------|----------------|
-| **Public** | System announcements, policy documents | All authenticated users |
-| **Internal** | Travel requests, expense claims | Own records + assigned managers |
-| **Confidential** | Salary-linked reimbursements, HR data | Finance + HR + Admin roles only |
-| **Restricted** | Audit logs, security events | Auditor + Admin roles only |
-
----
-
-## 8. Infrastructure Boundary
-
-### Environments
-
-| Environment | Purpose | Access |
-|------------|---------|--------|
-| **Development** | Active feature development and unit testing | Engineering team only |
-| **UAT (Staging)** | User Acceptance Testing with pilot users | QA team + pilot business users |
-| **Production** | Live system for all 10,000+ employees | All employees (role-based) |
-
-### Infrastructure Components (In Scope)
-
-| Component | Technology | Purpose |
-|----------|-----------|---------|
-| Frontend Hosting | Docker + Kubernetes / CDN | Serve React.js application |
-| Backend API | Docker + Kubernetes | NestJS API services |
-| Primary Database | PostgreSQL (managed cloud) | All transactional data |
-| Cache Layer | Redis (managed cloud) | Session management, KPI query caching |
-| File Storage | AWS S3 / Azure Blob Storage | Receipt and document storage |
-| CI/CD Pipeline | GitHub Actions | Build, test, deploy automation |
-| Monitoring | Prometheus + Grafana | System health and KPI metrics |
-| Log Management | ELK Stack | Centralized log aggregation |
-| Infrastructure as Code | Terraform | Cloud resource provisioning |
-
-### Infrastructure NOT In Scope
-- On-premise hardware procurement
-- Physical network infrastructure
-- End-user device procurement (laptops, phones)
-- Custom data center setup
-
----
-
-## 9. Boundary Constraints Summary
-
-The following table consolidates all critical constraints that define what is **in**, **out**, or **deferred** in this project.
-
-| Area | In Boundary (MVP) | Out of Boundary | Deferred to Phase 2 |
-|------|------------------|----------------|---------------------|
-| **Users** | 10,000 employees, managers, finance, HR, compliance, admin, auditors | Contractors, vendors, external partners | — |
-| **Travel** | Domestic travel requests, approvals, policy validation | International forex management, travel booking | Travel booking integration |
-| **Expenses** | Expense claims, receipt upload, manual entry | OCR auto-extraction, AI fraud detection | OCR, AI fraud detection |
-| **Approvals** | Multi-level workflow, SLA timers, auto-escalation | Bulk approval, delegation of authority | Delegation feature |
-| **Reimbursements** | Bank payment integration, status tracking | Multi-currency payments, payroll integration | Payroll integration |
-| **Reporting** | Pre-built operational reports | Custom report builder, BI tool embedding | Advanced reporting |
-| **Mobile** | Mobile-responsive web portal | Native iOS / Android application | Native mobile app |
-| **Integrations** | HRMS, SSO, Banking API, Email | ERP, SMS, Travel vendors, OCR | ERP, SMS, Travel, OCR |
-| **Analytics** | Real-time KPI dashboards | Predictive analytics, budget forecasting | AI analytics |
-| **Notifications** | Email + in-app | SMS, push notifications | SMS gateway |
-| **Data Migration** | New records from Go-Live | Historical Excel/email data migration | Not planned |
-| **Infrastructure** | Cloud-hosted, containerized | On-premise, hybrid cloud | — |
-
----
-
-## Revision History
-
-| Version | Date | Author | Change Description |
-|---------|------|--------|-------------------|
-| 1.0 | 2026-06-05 | Senior PM & Architect | Initial document creation |
-
----
-
-*This Project Boundary Document defines the explicit boundaries of the Enterprise Employee Travel & Expense Management System — covering system scope, actor responsibilities, module ownership, data classifications, integration touchpoints, and infrastructure boundaries. All development and stakeholder decisions should reference this document alongside the KPI Document, PRD, and Project Scope Document.*
+| Sprint | In-Boundary Deliverables | Out-of-Boundary (Do Not Build Yet) |
+|---|---|---|
+| Sprint 1 | DB schema, auth, RBAC, user profiles, Swagger | Any travel/claim/payment logic |
+| Sprint 2 | Travel request lifecycle, manager approval queue, SLA timer | Expense claims, policy engine, documents |
+| Sprint 3 | Expense claims, line items, document uploads, Finance review | Reimbursement payments, notifications at scale |
+| Sprint 4 | Policy engine rules, flagging logic, Compliance Officer API | Banking integration, reports |
+| Sprint 5 | Reimbursement lifecycle, bank payloads, failure/retry | Frontend build, UAT |
+| Sprint 6 | Notifications, audit middleware, reports, dashboard APIs | Frontend integration |
+| Sprint 7 | React frontend, UI design system, UAT, performance testing | New features or post-v1.0 scope items |

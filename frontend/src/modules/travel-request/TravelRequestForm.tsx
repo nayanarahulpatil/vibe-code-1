@@ -42,7 +42,12 @@ export default function TravelRequestForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    mutation.mutate(form)
+    const payload = {
+      ...form,
+      estimatedCost: form.estimatedCost === '' ? 0 : Number(form.estimatedCost),
+      advanceAmount: form.advanceRequired && form.advanceAmount !== '' ? Number(form.advanceAmount) : 0,
+    }
+    mutation.mutate(payload)
   }
 
   return (

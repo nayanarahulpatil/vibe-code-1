@@ -22,6 +22,7 @@ export class ExpenseClaimsService {
     const qb = this.claimRepo.createQueryBuilder('ec')
       .leftJoinAndSelect('ec.employee', 'emp')
       .leftJoinAndSelect('ec.travelRequest', 'tr')
+      .leftJoinAndSelect('ec.lineItems', 'li')
       .orderBy('ec.createdAt', 'DESC');
 
     if (filters.employeeId) qb.andWhere('ec.employeeId = :eid', { eid: filters.employeeId });

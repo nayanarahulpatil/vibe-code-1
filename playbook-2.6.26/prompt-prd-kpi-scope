@@ -1,0 +1,6 @@
+thinking mode ---
+
+Act according to the [manager_persona.md]. Work within this set boundaries [project_boundary.md] . Create a PRD by following the format specified in [prd_template.md].  Create a KPI Document by following the format specified in [kpi_template.md].  Create a Scope Document by following the format specified in [project_scope_template.md]. Context: Project Name: Enterprise Employee Travel & Expense Management System. Client Background: We are a large organization with approximately 10,000+ employees operating across multiple locations. Employees frequently travel for client meetings, training programs, audits, conferences, and internal business activities. Currently, travel requests, approvals, expense claims, and reimbursements are managed through emails, Excel sheets, phone calls, and paper documents. This process is time-consuming, lacks visibility, and creates operational challenges. Format: Strictly follow the format mentioned in respective file for which template is given and make sure to put prd, scope and kpi in /Development_Corrections/Agents. make sure for entire session u follow this rule [.antigravityrules]
+
+------
+[kpi.md] [prd.md] by referring this create boundry in same folder using [project_boundry_template.md]

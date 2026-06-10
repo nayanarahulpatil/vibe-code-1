@@ -58,7 +58,22 @@ export class TravelRequestService {
       throw new BadRequestException('Return date must be after departure date');
     }
 
-    const tr = this.travelRepo.create({ ...dto, employeeId: userId, status: TravelRequestStatus.DRAFT });
+    // Defensive parsing of numeric strings to avoid Postgres numeric input syntax errors
+    const parsedEstimatedCost = Number(dto.estimatedCost);
+    const estimatedCost = isNaN(parsedEstimatedCost) ? 0 : parsedEstimatedCost;
+
+    const advanceRequired = !!dto.advanceRequired;
+    const parsedAdvanceAmount = Number(dto.advanceAmount);
+    const advanceAmount = (!advanceRequired || isNaN(parsedAdvanceAmount)) ? 0 : parsedAdvanceAmount;
+
+    const tr = this.travelRepo.create({
+      ...dto,
+      estimatedCost,
+      advanceRequired,
+      advanceAmount,
+      employeeId: userId,
+      status: TravelRequestStatus.DRAFT,
+    });
     const saved = await this.travelRepo.save(tr);
 
     await this.auditService.log({
@@ -74,6 +89,10 @@ export class TravelRequestService {
     const tr = await this.findOne(id);
     if (tr.employeeId !== userId) throw new BadRequestException('Not your request');
     if (tr.status !== TravelRequestStatus.DRAFT) throw new BadRequestException('Only DRAFT requests can be submitted');
+
+    if (!tr.employee.managerId) {
+      throw new BadRequestException('No manager assigned to your profile. Please contact HR to set up your reporting manager before submitting travel requests.');
+    }
 
     tr.status = TravelRequestStatus.SUBMITTED;
     tr.submittedAt = new Date();

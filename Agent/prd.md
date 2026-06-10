@@ -1,432 +1,291 @@
 # Product Requirements Document (PRD)
-# Enterprise Employee Travel & Expense Management System
- 
-**Prepared By:** Senior Product Manager & Enterprise System Architect  
-**Technology Stack:** React.js (Frontend), Node.js (Backend APIs), PostgreSQL, Redis, REST APIs
+# Project: Enterprise Employee Travel & Expense Management System (TEMS)
+
+> **Version:** 1.0 | **Date:** 2026-06-10 | **Status:** Draft for Stakeholder Review
+> **Prepared by:** Senior Product Manager | **Audience:** Product, Engineering, QA, UAT, Finance, HR
 
 ---
 
-# 1. Executive Summary
+## 1. Problem Statement
 
-## Product Overview
-The Enterprise Travel & Expense Management System is a centralized web-based platform that automates travel requests, approval workflows, expense claims, reimbursement processing, policy compliance, reporting, and audit management for 10,000+ employees across multiple locations.
+### What problem is being solved?
+10,000+ employees across multiple office locations manage their travel and expense lifecycle entirely through unstructured channels — email threads, Excel spreadsheets, phone calls, and paper vouchers. This creates a fragmented, error-prone, and auditable process with no single system of record.
 
-## Business Context
-Current processes rely on email, Excel sheets, phone calls, and paper-based approvals resulting in high operational costs, delayed approvals, poor visibility, compliance risks, and employee dissatisfaction.
+### Who is affected?
 
-## Vision Statement
-Create a scalable, secure, and fully digital travel and expense ecosystem that improves employee experience, increases compliance, reduces operational costs, and provides real-time visibility into travel spending.
+| Stakeholder | Pain Point |
+|---|---|
+| **Employee (Traveler)** | No visibility on approval status; delays in reimbursement; unclear policy limits; manual receipt scanning and emailing |
+| **Manager (Approver)** | Email overload; no structured view of team travel; inability to track pending approvals with SLA context |
+| **Finance Executive** | Manual verification of each claim against policy; high error rates; slow multi-step payment processing |
+| **Compliance Officer** | Cannot enforce policy limits in real time; duplicate/fraudulent claims go undetected |
+| **Auditor** | No centralized audit trail; no immutable log of who approved what and when |
+| **HR Admin** | Org hierarchy maintained in disconnected spreadsheets; changes to reporting lines break approval routing |
 
-## Expected Business Impact
-- 95%+ system adoption
-- 100% digital travel and expense processing
-- 80% reduction in approval cycle time
-- 80% reduction in reimbursement turnaround time
-- 98%+ policy compliance
-- 25-35% operational cost reduction
-
----
-
-# 2. Problem Statement
-
-## Existing Challenges
-- Manual travel request approvals
-- Email-based communication
-- Paper receipts and expense documentation
-- Slow reimbursement processing
-- Lack of spend visibility
-- Compliance enforcement difficulties
-
-## User Pain Points
-
-### Employees
-- No request status visibility
-- Delayed reimbursements
-- Manual paperwork
-
-### Managers
-- Approval delays
-- No centralized dashboard
-
-### Finance Team
-- Manual verification
-- Duplicate claim detection
-- Audit preparation effort
-
-## Business Impact
-- Increased processing cost
-- Reduced productivity
-- Compliance risk
-- Poor audit readiness
-- Budget overruns
-
-## Opportunity Statement
-Implement a centralized platform to automate travel and expense management while improving employee experience and financial governance.
+### Why is it important?
+- Manual processing costs are high — estimates indicate 30–45 minutes of human effort per claim.
+- Policy violations (duplicate claims, limit breaches) are detected only post-payment, if at all.
+- Delayed reimbursements negatively impact employee experience and retention.
+- Regulatory audits require immutable, timestamped records that spreadsheets cannot provide.
+- At 10,000+ employees across locations, the operational risk of uncontrolled travel spend is a material financial exposure.
 
 ---
 
-# 3. Goals & Success Criteria
+## 2. Solution Overview
 
-## Business Goals
-| Goal | KPI |
-|--------|------|
-| Improve efficiency | Travel Processing Time |
-| Improve compliance | Policy Compliance Rate |
-| Reduce costs | Cost per Claim |
-| Improve employee satisfaction | Employee Satisfaction Score |
+### High-Level Solution Description
+TEMS is a centralized, web-based, role-driven platform that digitizes and automates the full employee travel and expense lifecycle — from pre-trip request and multi-level approval, through expense claim submission with receipt attachment, automated policy enforcement, finance audit, and banking-integrated reimbursement — with a complete immutable audit trail at every step.
 
-## Product Goals
-- Automate workflows
-- Enable self-service travel requests
-- Enforce policy compliance
-- Improve visibility and reporting
-- Provide mobile-responsive experience
+### Key Modules / Features
 
-## KPI Mapping
-| KPI | Target |
-|------|---------|
-| Adoption Rate | >95% |
-| Processing Time | <8 Hours |
-| Reimbursement Time | <3 Days |
-| Policy Compliance | >98% |
-| Employee Satisfaction | >4.5/5 |
-
-## Success Metrics
-- Reduced manual interventions
-- Faster approvals
-- Reduced support tickets
-- Improved audit readiness
+| # | Module | Purpose |
+|---|---|---|
+| M1 | **Authentication & RBAC** | Secure JWT-based login; 7 role system controlling all access paths |
+| M2 | **User & Org Management** | Employee profiles, department/designation, manager hierarchy sync |
+| M3 | **Travel Request** | Pre-trip request (origin, destination, dates, purpose, estimated cost, advance) |
+| M4 | **Approval Workflow Engine** | Multi-step configurable approvals with SLA tracking and escalation |
+| M5 | **Expense Claims & Line Items** | Itemized post-trip expenses linked to approved travel requests |
+| M6 | **Policy Compliance Engine** | Real-time auto-validation of amount limits, daily caps, receipt thresholds, duplicate detection |
+| M7 | **Document / Receipt Attachment** | Secure file uploads (PDF, JPG, PNG ≤ 5 MB) linked to claim line items |
+| M8 | **Reimbursement Processing** | Finance-initiated bank payload generation, status tracking (QUEUED → PAID/FAILED) |
+| M9 | **Notifications** | Status-change alerts dispatched to relevant stakeholders |
+| M10 | **Audit Logs** | Immutable timestamped record of all user actions and system events |
+| M11 | **Reports & Dashboard** | Role-specific dashboards; exportable travel spend analytics |
 
 ---
 
-# 4. Stakeholder Analysis
+## 3. User Flow
 
-| Stakeholder | Responsibility |
-|-------------|---------------|
-| Employee | Request travel, submit expenses |
-| Manager | Approve requests |
-| Finance Team | Expense verification & reimbursement |
-| HR Team | Employee master management |
-| Compliance Team | Policy governance |
-| Product Owner | Product decisions |
-| IT Team | Infrastructure & support |
+### 3.1 Pre-Trip: Travel Request Journey
 
-## Decision Makers
-- CFO
-- CHRO
-- CIO
-- Operations Head
+```
+Employee                      System                        Manager
+   |                             |                              |
+   |-- Create Travel Request --> |                              |
+   |   (purpose, origin, dest,   |                              |
+   |    dates, estimated cost,   |-- Validate advance notice  --|
+   |    advance required)        |   (≥ 3 days before departure)|
+   |<-- Draft TR-XXXXXX ---------|                              |
+   |                             |                              |
+   |-- PATCH /submit ----------->|                              |
+   |<-- status: SUBMITTED -------|                              |
+   |                             |-- Notify Manager ----------->|
+   |                             |                              |
+   |                             |<-- PATCH /approve or reject--|
+   |<-- Notification: APPROVED --|                              |
+```
 
----
+### 3.2 Post-Trip: Expense Claim & Reimbursement Journey
 
-# 5. User Personas
+```
+Employee              Policy Engine          Finance Executive         Bank
+   |                       |                       |                    |
+   |-- Create Claim ------> |                       |                    |
+   |-- Add Line Items ----> |                       |                    |
+   |   (category, amount,   |-- Real-time flag ---- |                    |
+   |    date, receipt_id)   |   policy violations   |                    |
+   |-- Upload Receipts ---> |                       |                    |
+   |-- PATCH /submit -----> |                       |                    |
+   |                        |                       |<-- Review Claim ---|
+   |                        |                       |-- PATCH /approve ->|
+   |                        |                       |-- POST /initiate ->|-- Bank API -->|
+   |<-- Notification: PAID -|                       |                    |<-- Reference--|
+```
 
-## Primary Users
-### Employee
-Needs:
-- Easy travel requests
-- Fast reimbursements
-- Status tracking
+### 3.3 Happy Path
+1. Employee submits Travel Request 7+ days before departure.
+2. Manager approves within SLA (8 hours).
+3. Employee travels; returns and creates Expense Claim under approved TR.
+4. Employee adds itemized line items with receipt uploads; all within policy limits.
+5. Employee submits claim.
+6. Finance Executive reviews, verifies receipts, approves claim.
+7. Finance initiates reimbursement.
+8. Bank processes; status transitions to `PAID` / `REIMBURSED`.
+9. Employee receives notification with payment reference.
 
-Motivations:
-- Less paperwork
-- Faster approvals
+### 3.4 Failure Paths
 
-Frustrations:
-- Delays
-- Lost receipts
-
-### Manager
-Needs:
-- Approval dashboard
-- Team visibility
-
-### Finance Executive
-Needs:
-- Compliance checks
-- Audit reports
-
-## Secondary Users
-- HR Administrators
-- Compliance Officers
-- Auditors
-- Executive Leadership
-
----
-
-# 6. User Journey
-
-## Current State Journey
-Travel Need → Email Request → Follow-up → Approval → Travel → Expense Submission → Verification → Reimbursement
-
-## Future State Journey
-Portal Login → Travel Request → Workflow Approval → Travel → Expense Upload → Auto Validation → Reimbursement → Reporting
-
-## Key Touchpoints
-- React Web Portal
-- Approval Dashboard
-- Finance Dashboard
-- Reporting Dashboard
-- Notification Center
+| Scenario | System Behavior |
+|---|---|
+| Travel requested < 3 days before departure | Policy Engine flags; submission blocked or comment-justified by manager |
+| Expense amount exceeds category limit | Line item flagged `is_policy_flagged = TRUE` with reason; Finance must review before approving |
+| Receipt missing for expense > ₹500 | Line item blocked as policy violation; claim cannot submit without correction |
+| Duplicate claim detected (same employee, date, amount, category) | System rejects submission with conflict warning to employee and notifies Auditor |
+| Manager does not act within 8 hours | Approval step auto-escalated to manager's manager |
+| Bank payment API fails | Reimbursement marked `FAILED`; Finance notified; retry available |
 
 ---
 
-# 7. Functional Requirements
+## 4. API Design
 
-| ID | Title | Description | Priority | Business Justification | Related KPI | API Required |
-|----|--------|------------|-----------|----------------------|-------------|-------------|
-| FR-001 | Authentication | SSO Login | Must Have | Security | Adoption | Auth API |
-| FR-002 | User Management | Employee profiles & roles | Must Have | Governance | Adoption | User API |
-| FR-003 | Travel Request | Create/Edit requests | Must Have | Efficiency | Processing Time | Travel API |
-| FR-004 | Approval Workflow | Multi-level approvals | Must Have | SLA compliance | Approval Time | Workflow API |
-| FR-005 | Expense Claims | Submit expenses | Must Have | Automation | Processing Time | Expense API |
-| FR-006 | Receipt Upload | Upload receipts | Must Have | Audit readiness | Compliance | Document API |
-| FR-007 | Policy Engine | Rule validation | Must Have | Compliance | Compliance Rate | Policy API |
-| FR-008 | Reimbursement | Payment workflow | Must Have | Faster payments | Reimbursement KPI | Payment API |
-| FR-009 | Notifications | Email/In-app alerts | Should Have | Adoption | Adoption KPI | Notification API |
-| FR-010 | Dashboard | Analytics & KPIs | Must Have | Visibility | Spend Visibility | Analytics API |
-| FR-011 | Reports | Operational reports | Must Have | Governance | Audit KPI | Reporting API |
-| FR-012 | Audit Logs | Activity tracking | Must Have | Compliance | Audit KPI | Audit API |
+### Authentication
+| Method | Endpoint | Request Body | Response | Roles |
+|---|---|---|---|---|
+| `POST` | `/auth/login` | `{ email, password }` | `{ access_token, user: {id, roles} }` | Public |
+| `GET` | `/auth/profile` | — | `{ id, employee_id, name, roles, department }` | All authenticated |
 
----
+### Travel Requests
+| Method | Endpoint | Request Body | Response | Roles |
+|---|---|---|---|---|
+| `POST` | `/travel-requests` | `{ purpose, origin, destination, departure_date, return_date, estimated_cost, advance_required, advance_amount, notes }` | `{ id, request_number: "TR-XXXXXX", status: "DRAFT" }` | EMPLOYEE |
+| `GET` | `/travel-requests/my` | Query: `?page&status` | Paginated list of own requests | EMPLOYEE |
+| `GET` | `/travel-requests/pending-approvals` | — | List of requests pending manager action | MANAGER |
+| `GET` | `/travel-requests` | Query filters | All requests (paginated) | SYSTEM_ADMIN, FINANCE_EXECUTIVE, HR_ADMIN |
+| `GET` | `/travel-requests/:id` | — | Full travel request detail | Owner + Approver roles |
+| `PATCH` | `/travel-requests/:id/submit` | — | `{ status: "SUBMITTED" }` | EMPLOYEE (owner only) |
+| `PATCH` | `/travel-requests/:id/approve` | `{ comments }` | `{ status: "APPROVED" }` | MANAGER, SYSTEM_ADMIN |
+| `PATCH` | `/travel-requests/:id/reject` | `{ reason }` | `{ status: "REJECTED" }` | MANAGER, SYSTEM_ADMIN |
+| `PATCH` | `/travel-requests/:id/cancel` | `{ reason }` | `{ status: "CANCELLED" }` | EMPLOYEE (owner only) |
 
-# 8. Feature Breakdown
+### Expense Claims
+| Method | Endpoint | Request Body | Response | Roles |
+|---|---|---|---|---|
+| `POST` | `/expense-claims` | `{ travel_request_id }` | `{ id, claim_number: "EXP-XXXXXX", status: "DRAFT" }` | EMPLOYEE |
+| `GET` | `/expense-claims/my` | Query: `?page&status` | Own claims list | EMPLOYEE |
+| `GET` | `/expense-claims` | Query filters | All claims | FINANCE_EXECUTIVE, SYSTEM_ADMIN, AUDITOR |
+| `GET` | `/expense-claims/:id` | — | Full claim with line items | Owner + Finance roles |
+| `POST` | `/expense-claims/:id/line-items` | `{ category, description, amount, expense_date, receipt_id }` | `{ id, is_policy_flagged, flag_reason }` | EMPLOYEE (owner) |
+| `PATCH` | `/expense-claims/:id/submit` | — | `{ status: "SUBMITTED" }` | EMPLOYEE (owner) |
+| `PATCH` | `/expense-claims/:id/approve` | `{ notes, approved_amount }` | `{ status: "APPROVED" }` | FINANCE_EXECUTIVE, SYSTEM_ADMIN |
+| `PATCH` | `/expense-claims/:id/reject` | `{ reason }` | `{ status: "REJECTED" }` | FINANCE_EXECUTIVE, SYSTEM_ADMIN |
 
-| Feature | Purpose | User Value | Business Value | Dependencies |
-|----------|---------|-----------|---------------|--------------|
-| Travel Request Module | Travel submission | Faster requests | Better tracking | User Management |
-| Approval Engine | Workflow automation | Faster approvals | SLA improvement | Workflow Service |
-| Expense Module | Expense submission | Simpler claims | Reduced cost | Document Service |
-| Policy Engine | Compliance validation | Guidance | Risk reduction | Rules Engine |
-| Dashboard | Visibility | Transparency | KPI monitoring | Analytics |
-| Reporting | Reporting | Insights | Governance | Data Warehouse |
-| Notification Center | Alerts | Awareness | Faster actions | Email/SMS |
+### Documents
+| Method | Endpoint | Request | Response | Roles |
+|---|---|---|---|---|
+| `POST` | `/documents/upload` | `multipart/form-data` (file, expenseClaimId, lineItemId) | `{ id, filename, url }` | EMPLOYEE |
+| `GET` | `/documents/claim/:claimId` | — | List of docs for claim | Owner + Finance + Auditor |
 
----
+### Reimbursements
+| Method | Endpoint | Request Body | Response | Roles |
+|---|---|---|---|---|
+| `POST` | `/reimbursements/initiate` | `{ expenseClaimId }` | `{ id, reimbursement_number: "RMB-XXXXXX", status: "QUEUED" }` | FINANCE_EXECUTIVE, SYSTEM_ADMIN |
+| `GET` | `/reimbursements` | Query filters | All reimbursements | FINANCE_EXECUTIVE, SYSTEM_ADMIN, AUDITOR |
+| `GET` | `/reimbursements/:id` | — | Single reimbursement detail | Finance + Auditor roles |
 
-# 9. User Stories
+### Policy Rules
+| Method | Endpoint | Request Body | Response | Roles |
+|---|---|---|---|---|
+| `GET` | `/policy-rules` | — | All policy rules (active + inactive) | All authenticated |
+| `POST` | `/policy-rules` | `{ name, rule_type, category, limit_amount, scope }` | Created rule object | COMPLIANCE_OFFICER, SYSTEM_ADMIN |
+| `PUT` | `/policy-rules/:id` | Full rule update body | Updated rule | COMPLIANCE_OFFICER, SYSTEM_ADMIN |
+| `PATCH` | `/policy-rules/:id/toggle` | `{ isActive: boolean }` | `{ id, is_active }` | COMPLIANCE_OFFICER, SYSTEM_ADMIN |
 
-### US-001
-As an Employee  
-I want to create a travel request online  
-So that approvals can be processed quickly.
-
-### US-002
-As a Manager  
-I want to approve requests from my dashboard  
-So that travel plans are not delayed.
-
-### US-003
-As a Finance Executive  
-I want automated policy validation  
-So that compliance checks are faster.
-
-### US-004
-As an Auditor  
-I want complete audit logs  
-So that audits can be completed efficiently.
-
----
-
-# 10. Acceptance Criteria
-
-## Travel Request
-
-Given an authenticated employee  
-When travel details are submitted  
-Then a request should be created and routed to approvers.
-
-## Approval Workflow
-
-Given a pending request  
-When a manager approves  
-Then the next workflow step should be triggered.
-
-## Expense Claim
-
-Given a completed trip  
-When receipts are uploaded  
-Then expenses should be validated and stored.
+### Authentication & Error Handling
+- **Scheme:** JWT Bearer Token — `Authorization: Bearer <token>`
+- **Token Expiry:** Configurable (default: 24 hours)
+- **Standard Error Envelope:**
+```json
+{
+  "statusCode": 400,
+  "message": "departure_date must be at least 3 business days from today",
+  "error": "Bad Request",
+  "timestamp": "2026-06-10T04:00:00.000Z",
+  "path": "/travel-requests"
+}
+```
+- **HTTP Status Codes used:**
+  - `200` OK, `201` Created, `400` Bad Request, `401` Unauthorized, `403` Forbidden, `404` Not Found, `409` Conflict (duplicate), `413` Payload Too Large, `422` Unprocessable Entity, `500` Internal Server Error
 
 ---
 
-# 11. Non-Functional Requirements
+## 5. Edge Cases
 
-## Performance
-- API response < 2 seconds
-- Page load < 3 seconds
+### Invalid Inputs
+| Input Scenario | Expected Behavior |
+|---|---|
+| `departure_date` after `return_date` | `400 Bad Request` — "Return date must be after departure date" |
+| Negative `amount` or `estimated_cost` | `400 Bad Request` — "Amount must be a positive number" |
+| Expense `expense_date` outside trip date range | `422 Unprocessable Entity` — "Expense date must fall within trip dates" |
+| Overlapping active trips for same employee | Warning flag raised; Finance / HR notified |
+| `advance_amount` exceeds `estimated_cost` | `400 Bad Request` — "Advance cannot exceed estimated cost" |
+| Invalid UUID for `travel_request_id` | `400 Bad Request` — "Invalid travel request reference" |
 
-## Scalability
-- Support 10,000+ users
-- 1M+ transactions annually
+### Failure Scenarios
+| Scenario | System Behavior |
+|---|---|
+| Submitting claim with flagged policy violations | Block submission; return list of violations to employee |
+| Duplicate claim (same employee, category, amount, date) | `409 Conflict` — submission blocked; Auditor notified |
+| Receipt missing for expense > ₹500 | `422` — "Receipt required for line item exceeding ₹500 threshold" |
+| Finance approves claim with no bank account on file | `422` — reimbursement initiation blocked; prompt HR to update bank info |
+| Bank API timeout during reimbursement | Reimbursement marked `FAILED`; `failure_reason` captured; `retry_count` incremented |
+| File upload with disallowed extension | `400 Bad Request` — "Only PDF, JPG, JPEG, PNG files are accepted" |
 
-## Security
-- SSO Integration
-- RBAC Authorization
-- Encryption at rest and transit
-- OWASP compliance
-
-## Accessibility
-- WCAG 2.1 AA compliance
-
-## Reliability
-- 99.9% uptime
-
-## Compliance
-- Audit retention
-- GDPR equivalent controls
-- Corporate policy enforcement
-
----
-
-# 12. Technical Considerations
-
-## Frontend (React.js)
-- React.js
-- TypeScript
-- Redux Toolkit
-- React Query
-- Material UI / Ant Design
-
-## Backend (Node.js)
-- Node.js
-- NestJS/Express.js
-- PostgreSQL
-- Redis Cache
-- JWT/SSO
-
-## API Requirements
-- REST APIs
-- OpenAPI Documentation
-- API Versioning
-
-## Third-Party Integrations
-- HRMS
-- ERP
-- Banking System
-- Email Service
-- SMS Gateway
-- SSO Provider
-
-## Data Requirements
-- Employee Data
-- Travel Records
-- Expense Records
-- Audit Logs
-- Approval History
-
-## Analytics Requirements
-- KPI Dashboards
-- Adoption Metrics
-- Processing Times
-- Compliance Analytics
+### Security & Operational Exceptions
+| Exception | Prevention / Handling |
+|---|---|
+| Self-approval of own travel request | `approver_id != employee_id` enforced at service layer; returns `403 Forbidden` |
+| Manager approving outside their reporting hierarchy | Org hierarchy check at approval routing; unauthorized attempt returns `403` |
+| Employee modifying another employee's draft | Ownership check at service layer; `403 Forbidden` on mismatch |
+| Orphaned manager (no manager assigned) | Requests escalate to `HR_ADMIN` as fallback approver; prevents workflow deadlock |
+| Concurrent approval race condition | Database-level unique constraint on `(workflow_id, step_number)` + optimistic locking |
+| Large-scale data export by Auditor | Rate-limited; paginated responses only; no bulk CSV export without explicit admin grant |
 
 ---
 
-# 13. Risks & Constraints
+## 6. KPIs (Success Metrics / Acceptance Criteria)
 
-## Business Risks
-- Low adoption
-- Resistance to change
-- Policy exceptions
+### Business KPIs
+| Metric | Target |
+|---|---|
+| Travel request approval turnaround time | < 24 hours average |
+| Expense reimbursement cycle duration | < 3 business days from claim approval to payment |
+| Reduction in manual Finance/HR processing time | ≥ 60% reduction versus current baseline |
+| Policy compliance enforcement rate | 100% of claims auto-validated before Finance review |
 
-## Technical Risks
-- Integration delays
-- Data migration issues
-- Performance bottlenecks
+### Product KPIs
+| Metric | Target |
+|---|---|
+| Employee adoption rate | ≥ 95% of active traveling employees using TEMS within 60 days |
+| Reduction in email/phone queries to Finance & HR | ≥ 60% reduction |
+| User error rate on claim submission | < 5% of submissions require correction and resubmission |
+| Duplicate / fraudulent claim detection rate | 100% of same-employee same-day duplicate attempts caught |
 
-## Assumptions
-- ERP available
-- HRMS available
-- SSO available
+### Technical KPIs
+| Metric | Target |
+|---|---|
+| API response time (p95) | < 300 ms for all CRUD operations |
+| File upload success rate (valid files ≤ 5 MB) | ≥ 99.9% |
+| System uptime / availability | ≥ 99.9% (excluding planned maintenance) |
+| Audit log write latency | < 500 ms per action logged |
 
-## Dependencies
-- HRMS Integration
-- ERP Integration
-- Banking Integration
-
----
-
-# 14. Release Planning
-
-## MVP Scope
-- Authentication
-- User Management
-- Travel Requests
-- Approval Workflow
-- Expense Claims
-- Receipt Upload
-- Reimbursement Processing
-- Dashboard
-
-## Phase 2
-- OCR Receipt Extraction
-- Travel Booking Integration
-- Advanced Reporting
-- Mobile App
-
-## Future Enhancements
-- AI Fraud Detection
-- Budget Forecasting
-- Virtual Assistant
-- Predictive Analytics
+### Feature Acceptance Criteria
+| Feature | Acceptance Criteria |
+|---|---|
+| Travel Request | Employee can create, save as draft, and submit; system generates unique TR-XXXXXX code; advance notice < 3 days is flagged |
+| Approval Workflow | Manager receives notification on submission; can approve/reject with comments; SLA timer escalates at 8 hours |
+| Expense Claims | One claim per travel request enforced; line item total aggregates correctly; policy flags appear inline per line item |
+| Receipt Upload | Only PDF/JPG/JPEG/PNG ≤ 5 MB accepted; receipt linked to line item; Finance can view all receipts for a claim |
+| Policy Engine | All 10 default policy rules enforced; Compliance Officer can toggle rules on/off without code deployment |
+| Reimbursement | Finance initiates payment; bank payload generated with account + IFSC + amount; status transitions QUEUED → PROCESSING → PAID/FAILED |
+| Audit Trail | Every status change, login, and policy override logged with user ID, timestamp, IP address, and before/after state |
 
 ---
 
-# 15. KPI Traceability Matrix
+## 7. Limitations
 
-| KPI | Product Goal | Feature | User Story | Success Metric |
-|------|-------------|----------|------------|---------------|
-| Adoption Rate | Increase usage | Portal Login | US-001 | >95% |
-| Processing Time | Faster approvals | Workflow Engine | US-002 | <8 Hours |
-| Compliance Rate | Reduce violations | Policy Engine | US-003 | >98% |
-| Reimbursement Time | Faster payments | Reimbursement Module | US-001 | <3 Days |
-| Satisfaction Score | Better UX | Dashboard | US-001 | >4.5/5 |
-| Cost Per Claim | Reduce costs | Expense Automation | US-003 | <₹75 |
+### Out-of-Scope Items
+- Direct flight, hotel, or ground transport booking integration (employees book externally and claim reimbursement)
+- OCR / AI-based automatic extraction of data from uploaded invoice images
+- Multi-currency support (system operates exclusively in Indian Rupee — INR)
+- Native mobile applications for iOS or Android (responsive web only)
+- Payroll system integration (reimbursement is standalone; no payroll deduction/credit module)
+- SSO / SAML / Active Directory integration (local authentication only in v1.0)
 
----
+### Technical Constraints
+- File attachments limited to: `.pdf`, `.jpg`, `.jpeg`, `.png` — maximum 5 MB per file
+- Single expense claim per approved travel request (database-enforced unique constraint)
+- Approval routing is hierarchy-driven; parallel (multi-approver same step) workflows are not supported in v1.0
+- Banking integration uses payload schema only — actual NEFT/IMPS API integration is client-configured post-deployment
 
-# 16. Open Questions
-
-1. What is the approval hierarchy structure?
-2. Is international travel in scope?
-3. Which ERP system will be integrated?
-4. What banking provider will be used?
-5. Are travel bookings included in MVP?
-6. What audit retention period is required?
-7. Is OCR mandatory in Phase 1?
-8. Are contractors included?
-9. What notification channels are required?
-10. What executive dashboards are needed?
+### Known Risks & Dependencies
+| Risk | Mitigation |
+|---|---|
+| Banking API unavailability | FAILED status + manual retry mechanism + Finance notification |
+| Org hierarchy data staleness | HR Admin tools for real-time hierarchy update; routing failures surface as escalations |
+| Large concurrent user load at month-end (claim cycle) | PostgreSQL connection pooling; horizontal scaling via Docker |
+| Employee resistance to adoption | Role-specific training material; dedicated help center; guided onboarding flow |
 
 ---
 
-# Appendix A: Recommended Architecture
-
-Frontend:
-- React.js
-- TypeScript
-- Redux Toolkit
-- Material UI
-
-Backend:
-- Node.js
-- NestJS
-- PostgreSQL
-- Redis
-
-Infrastructure:
-- Docker
-- Kubernetes
-- CI/CD Pipeline
-- AWS/Azure
-
-Monitoring:
-- Prometheus
-- Grafana
-- ELK Stack
-
-Security:
-- SSO
-- RBAC
-- Audit Logging
+## Validation Rule
+A PRD is considered **INCOMPLETE** if any of the above 7 sections are missing.
