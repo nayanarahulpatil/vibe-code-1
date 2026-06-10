@@ -287,5 +287,3 @@ Employee              Policy Engine          Finance Executive         Bank
 
 ---
 
-## Validation Rule
-A PRD is considered **INCOMPLETE** if any of the above 7 sections are missing.

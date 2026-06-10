@@ -196,11 +196,3 @@
 | API Performance | 95th percentile response time for all CRUD operations | < 300 ms |
 
 ---
-
-## IMPORTANT RULES
-1. Never generate generic KPIs.
-2. Include governance, audit, security, scalability, compliance, and operational KPIs.
-3. Ensure every module has complete KPI coverage.
-4. Output must be detailed enough to directly become a BRD, PRD, QA strategy, and UAT checklist foundation.
-5. Use markdown tables throughout.
-6. Do not skip technical, operational, security, or reporting modules.
